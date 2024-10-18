@@ -65,6 +65,8 @@ end ")
         ACTION="AUTHORIZE"
     elif [ "$EVENT" = "occurred MIC different in Key Handshaking" ]; then
         ACTION="MIC_DIFF"
+    elif [ "$EVENT" = "occurred CounterMeasures attack" ]; then
+        ACTION="COUNTER_MEASURES"
     else
         ACTION=""
     fi

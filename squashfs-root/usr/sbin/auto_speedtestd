@@ -58,7 +58,7 @@ local cfg = {
         ['tmp_speedtest_xml'] = "/tmp/speedtest_urls.xml"
 }
 
-local SPEEDTEST_VER="OVERSEA"
+local SPEEDTEST_VER="__UNDEFINED__"
 --[[
 if #arg >= 1 then
     if arg[1] == 'oversea' then
@@ -93,7 +93,7 @@ end
 
 --logger
 --[[1 Alert, 3 Error 7 Debug ]]--
-px.openlog("speedtest","np",LOG_USER)
+px.openlog("speedtest",LOG_NDELAY,LOG_USER)
 function logger(loglevel,msg)
     if loglevel == 10 then
 	if g_debug then
@@ -879,7 +879,6 @@ function prepare_speedtest_urls()
         return
     end
 
-    px.sleep(15)
     if not is_internet_connected() then
         logger(10, "prepare urls  Internet is not connected, do nothing!")
         return

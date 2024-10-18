@@ -7,8 +7,6 @@ find_mount_jffs2() {
 	if [ "$overlay_head" = "ffffffff" ] ; then
 		echo "overlay_head  $overlay_head"
 		nvram set  flag_format_overlay=1
-		rec_mtd=$(find_mtd_part cfg_bak)
-		[ -n "$rec_mtd" ] && touch /tmp/need_config_recovery
 	fi
 
 	mount "$(find_mtd_part overlay)" /data -t jffs2

@@ -1,6 +1,7 @@
 #!/bin/sh
 PPP_IPPARAM="$6"
 . /lib/netifd/netifd-proto.sh
+. /lib/netifd/tools.sh
 proto_init_update "$IFNAME" 1 1
 proto_set_keep 1
 [ -n "$PPP_IPPARAM" ] && {
@@ -11,3 +12,24 @@ proto_set_keep 1
         [ -n "$DNS2" -a "$DNS1" != "$DNS2" ] && proto_add_dns_server "$DNS2"
 }
 proto_send_update "$PPP_IPPARAM"
+
+#adjust MTU if vpn MTU is too larger to go through WAN
+[ -n "$IFNAME" ] && {
+    wan_mtu=$(get_wan_mtu)
+    cur_mtu=`ip a show dev $IFNAME |grep -o "mtu\s*[0-9]*"|awk '{print $2}'`
+    case $IFNAME in
+        "pptp-vpn")
+            wan_mtu=`expr $wan_mtu - 60`
+            ;;
+        "l2tp-vpn")
+            wan_mtu=`expr $wan_mtu - 40`
+            ;;
+        "*")
+            ;;
+    esac
+    [ "$wan_mtu" -lt "$cur_mtu" ] &&{
+        logger -t ppp -p9 "vpn-up: $IFNAME MTU changed to $wan_mtu cauze cur MTU: $cur_mtu is large."
+        ifconfig $IFNAME mtu $wan_mtu
+    }
+}
+

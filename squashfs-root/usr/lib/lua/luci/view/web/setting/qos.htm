@@ -9,12 +9,14 @@ local request_uri = luci.http.getenv("REMOTE_URI")
 local remote_addr = luci.http.getenv("REMOTE_ADDR")
 local mac = luci.sys.net.ip4mac(remote_addr)
 local lanType = wifiUtil.getDeviceWifiIndex(mac)
-local hardware = string.lower( sys.getHardware() )
+local XQSysUtil = require "xiaoqiang.util.XQSysUtil"
+local hardware = string.lower( XQSysUtil.getHardware() )
 %>
 <%include("web/inc/head")%>
 <title><%:小米路由器%></title>
 <meta name="viewport" content="width=1200">
 <link href="<%=resource%>/web/css/bc.css?v=<%=ver%>" rel="stylesheet">
+<link href="<%=resource%>/web/css/layout.css?v=<%=ver%>" rel="stylesheet">
 <link href="<%=resource%>/web/css/qos.css?v=<%=ver%>" rel="stylesheet">
 </head>
 <body>
@@ -71,13 +73,14 @@ local hardware = string.lower( sys.getHardware() )
             <div class="hd" style="margin-bottom:0px;">
                 <h3><%:QoS智能分配%></h3>
                 <div class="switch">
-                    <a data-enable="1" class="btn-switch btn-switch-off" id="btnqos" href="#"></a>
+                    <a data-enable="1" class="btn-switch btn-switch-on" id="btnqos" href="#"></a>
                 </div>
             </div>
             <div class="bd">
                 <div class="mod-qos-set hasspeed">
                     <div class="isoff" id="qosoff" style="display:none;"><%:当前QoS服务暂未开启%></div>
                     <div class="ison" id="qosset" style="display:none;">
+                        <%if hardware ~= "r1500" then%>
                         <div class="models settings" style="padding-top:40px;">
                             <h4 class="tit"><%:根据应用优先级分配网速%></h4>
                             <div id="qosmode" class="tab clearfix">
@@ -102,6 +105,8 @@ local hardware = string.lower( sys.getHardware() )
                             </div>
                             <hr></hr>
                         </div>
+                        <%end%>
+
                         <div class="settings">
                             <h4><%:家庭WiFi限速%> <i class="ico ico-refresh" id="refresh"></i></h4>
                             <div class="table-devices" id="tableauto" style="display:none">
@@ -155,7 +160,9 @@ local hardware = string.lower( sys.getHardware() )
                             </div>
                             <hr></hr>
                         </div>
-                        <div id="guest-limit">
+
+                        <%if hardware ~= "r1500"then%>
+                        <div id="guest-limit" >
                             <script type="tmpl/html" id="guest-limit-script">
                             <div class="mod-qos-speedtest settings">
                                 <h4 class="tit"><%:访客WiFi限速%>:</h4>
@@ -186,9 +193,13 @@ local hardware = string.lower( sys.getHardware() )
                             </div>
                             </script>
                         </div>
+                        <%end%>
+
+                        <%if hardware ~= "r1500" then%>
                         <div id="local-limit">
                         <script type="tmpl/html" id="local-limit-script">
-                        <%if (hardware ~= "r4"  and hardware ~= "r4a"  and hardware ~= "r1cl" and hardware ~= "r4c" and hardware ~= "r4cm" and hardware ~= "r3a" and hardware ~= "r3l" and hardware ~= "r4ac") then%>
+                        <%if (hardware ~= "r4" and hardware ~= "r1cl" and hardware ~= "r4c" and hardware ~= "r4cm" and hardware ~= "r3a" and hardware ~= "r3l" and hardware ~= "r4ac") then%>
+                            
                             <div class="mod-qos-speedtest settings">
                                 <h4 class="tit"><%:路由器自身上传下载限速%>:</h4>
                                 <div class="mod-speed-result" style="padding-top:0px;">
@@ -220,6 +231,8 @@ local hardware = string.lower( sys.getHardware() )
                              <%end%>
                              </script>
                         </div>
+                        <%end%>
+
                     </div>
                 </div>
             </div>
@@ -465,22 +478,20 @@ var modelQos = (function(){
                     $('.mod-bandwidth .nospeed').show();
                     $('.mod-bandwidth .hasspeed').hide();
                     $('.result-tip').show();
-                    // var st = cookie.get("qosbtn");
-                    // $('#outband-up').html() === '--'
-                    // if( st == 1){
-                    // if($('#outband-up').html() === '--'){
-                    //     dlgSpeed = $.dialog({
-                    //         title: '<%:手工设置外网带宽%>',
-                    //         content: $('#tplbandsetform').html().tmpl({
-                    //             upband: '',
-                    //             downband: ''
-                    //         }),
-                    //         lock: true
-                    //     });
-                    //     setTimeout(function(){
-                    //         $.formInit();
-                    //     }, 100);
-                    // }
+                    var st = cookie.get("qosbtn");
+                    if( st == 1){
+                        dlgSpeed = $.dialog({
+                            title: '<%:手工设置外网带宽%>',
+                            content: $('#tplbandsetform').html().tmpl({
+                                upband: '',
+                                downband: ''
+                            }),
+                            lock: true
+                        });
+                        setTimeout(function(){
+                            $.formInit();
+                        }, 100);
+                    }
                                   
                     return;
                 }
@@ -515,10 +526,8 @@ var modelQos = (function(){
 
     function guestWifiSwitch(){
         $.getJSON('<%=luci.dispatcher.build_url("api", "misns", "wifi_share_info")%>', { }, function(rsp){
-            if(!rsp.info.guest){
+            if(!rsp.info&&rsp.info.guest){
                 $('#guest-limit').hide();
-            }else{
-                $('#guest-limit').show();
             }
         })
     }
@@ -535,22 +544,22 @@ var modelQos = (function(){
 
             // guest wifi switch
             guestWifiSwitch();
-
+            $('#local-limit').hide();
 
             if(rsp.guest.percent_up == 0){
-                $('#guest-limit li:first .num').text('无限制').addClass('txt');
+                $('#guest-limit li:first .num').text('<%:无限制%>').addClass('txt');
                 $('#guest-limit li:first .con').hide();
             }
             if(rsp.guest.percent == 0){
-                $('#guest-limit li:last .num').text('无限制').addClass('txt');
+                $('#guest-limit li:last .num').text('<%:无限制%>').addClass('txt');
                 $('#guest-limit li:last .con').hide();
             }
             if(rsp.local.percent_up == 0){
-                $('#local-limit li:first .num').text('无限制').addClass('txt');
+                $('#local-limit li:first .num').text('<%:无限制%>').addClass('txt');
                 $('#local-limit li:first .con').hide();
             }
             if(rsp.local.percent == 0){
-                $('#local-limit li:last .num').text('无限制').addClass('txt');
+                $('#local-limit li:last .num').text('<%:无限制%>').addClass('txt');
                 $('#local-limit li:last .con').hide();
             }
             $('body').delegate( '.btn-limit', 'click', function( e ){
@@ -723,24 +732,11 @@ var modelQos = (function(){
             e.preventDefault();
             var st = $(this).hasClass('btn-switch-on') ? 0 : 1,
                 btn = this;
-                if((st == 1)&&($('.aaaa .num').html() === '--')){
-                    dlgSpeed = $.dialog({
-                        title: '<%:手工设置外网带宽%>',
-                        content: $('#tplbandsetform').html().tmpl({
-                            upband: '',
-                            downband: ''
-                        }),
-                        lock: true
-                    });
-                    setTimeout(function(){
-                        $.formInit();
-                    }, 100);
-                }
-                // cookie.set("qosbtn", st, 24);
+                cookie.set("qosbtn", st, 24);
                 $.pub( 'qos:test',{st:st,cb:function(){
                     $.getJSON('<%=luci.dispatcher.build_url("api", "misystem", "qos_switch")%>', {'on': st}, function(rsp){
                                 if (rsp.code == 0) {
-                                    location.reload(1);                       
+                                    location.reload(1);                            
                                 }
                             });
                 }});

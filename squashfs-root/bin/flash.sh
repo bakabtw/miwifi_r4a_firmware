@@ -29,7 +29,8 @@ upgrade_param_check() {
 	cur_ver=`cat /usr/share/xiaoqiang/xiaoqiang_version`
 	klogger "Begin Ugrading..., current version: $cur_ver"
 	sync
-	[ "`cat /proc/xiaoqiang/model`" != "R4A" ] && echo 3 > /proc/sys/vm/drop_caches
+	model=`cat /proc/xiaoqiang/model`
+	[ "$model" != "R4A" -a "$model" != "R3GV2" ] && echo 3 > /proc/sys/vm/drop_caches
 }
 
 upgrade_prepare_dir() {
@@ -76,8 +77,14 @@ upgrade_done_set_flags() {
 }
 
 uploadUpgrade() {
-	logger stat_points_none upgrade=start
-	[ -f /usr/sbin/StatPoints ] && /usr/sbin/StatPoints
+    [ "1" = "`cat /proc/xiaoqiang/ft_mode`" ] && return 0
+    [ "YES" != "`uci -q get xiaoqiang.common.INITTED`" ] && return 0
+
+	wanstatus=`ubus call network.interface.wan status | grep up | grep false`
+	if [ "$wanstatus" = "" ];then
+		logger stat_points_none upgrade=start
+		[ -f /usr/sbin/StatPoints ] && /usr/sbin/StatPoints
+	fi
 }
 
 
@@ -113,9 +120,10 @@ else
 	hndmsg
 fi
 
+board_start_upgrade_led
+
 # stop services
 board_prepare_upgrade
-board_start_upgrade_led
 
 # prepare to extract file
 filename=`basename $1`

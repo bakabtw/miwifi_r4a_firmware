@@ -104,9 +104,7 @@ board_prepare_upgrade() {
 }
 
 board_start_upgrade_led() {
-	gpio l 8 0 4000 0 0 0 # blue: off
-	gpio l 10 10 10 1 0 4000 # yellow: blink
-	gpio l 6 0 4000 0 0 0 # red: off
+	xqled sys_ota
 }
 
 
@@ -130,8 +128,76 @@ upgrade_write_mtd() {
 }
 
 board_system_upgrade() {
-	local filename=$1
+	local filename="$1"
+	#update nvram setting when upgrading
+	if [ "$2" = "1" ]; then
+		nvram set restore_defaults=1
+		klogger "Restore defaults is set."
+	else
+		nvram set restore_defaults=2
+	fi
+	nvram set flag_flash_permission=0
+	nvram set flag_ota_reboot=1
+	nvram set flag_upgrade_push=1
+	nvram commit
 
+	# tell server upgrade is finished
+	uci set /etc/config/messaging.deviceInfo.UPGRADE_STATUS_UPLOAD=0
+	uci commit
+	klogger "messaging.deviceInfo.UPGRADE_STATUS_UPLOAD=`uci get /etc/config/messaging.deviceInfo.UPGRADE_STATUS_UPLOAD`"
+	klogger "/etc/config/messaging : `cat /etc/config/messaging`"
+
+	# prepare the minimum working environment
+	mount -o remount,size=100% /tmp
+	lib_list="/lib/libc.so /lib/librpc.so /usr/lib/libltdl.so.7 /lib/ld-musl-mipsel-sf.so.1 \
+	/lib/libubox.so /usr/lib/libcrypto.so.1.0.0 /lib/libgcc_s.so.1 /usr/lib/libmbedtls.so.9"
+	bin_list="/bin/busybox /bin/ash /bin/sh /bin/cat /bin/mount /bin/umount /bin/pidof /usr/sbin/killall5 \
+	/bin/mkxqimage /sbin/reboot /usr/sbin/nvram /bin/sleep /bin/usleep /sbin/mtd"
+
+	mkdir -p /tmp/update_environment/lib
+	mkdir -p /tmp/update_environment/bin
+	mkdir -p /tmp/update_environment/proc
+	mkdir -p /tmp/update_environment/dev
+	mkdir -p /tmp/update_environment/usr/share/xiaoqiang/
+	for lib in $lib_list
+	do
+		if [ -e $lib ]
+		then
+			cp -L $lib /tmp/update_environment/lib
+		else
+			# in case the lib_list is outdated, abort early
+			msg="Lib $lib not found"
+			hndmsg
+			reboot -f
+		fi
+	done
+	for bin in $bin_list
+	do
+		if [ -e $bin ]
+		then
+			cp -P $bin /tmp/update_environment/bin
+		else
+			# in case the bin_list is outdated, abort early
+			msg="Bin $bin not found"
+			hndmsg
+			reboot -f
+		fi
+	done
+	cp /usr/sbin/bdata /tmp/update_environment/bin/
+	cp /usr/share/xiaoqiang/public.pem /tmp/update_environment/usr/share/xiaoqiang/
+	mv $filename /tmp/$filename
+	pivot /tmp/update_environment /old_root && {
+		umount -l /old_root
+		klogger "Switch to ram-based rootfs"
+	}
+
+	klogger -n "Begin Upgrading and Rebooting..."
+
+	# Eliminate all existing userspace programs 
+	export PATH="/bin:/sbin:/usr/bin:/usr/sbin"
+	/bin/killall5
+
+	cd /tmp/
 	mkxqimage -x $filename
 	[ "$?" = "0" ] || {
 		klogger "cannot extract files"
@@ -141,6 +207,8 @@ board_system_upgrade() {
 
 	upgrade_write_mtd
 
-	return 0
-
+	# should not return to caller(flash.sh)
+	reboot
+	sleep 30
+	reboot -f
 }

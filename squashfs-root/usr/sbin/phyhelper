@@ -20,20 +20,20 @@ usage () {
 }
 
 phy_stop_lan() {
-    sw_stop_lan
+    sw_stop_lan "$1"
     return $?
 }
 
 phy_start_lan() {
-    sw_start_lan
+    sw_start_lan "$1"
     return $?
 }
 
 # make client resend DHCP request
 phy_restart_lan() {
-    phy_stop_lan || return 1
+    phy_stop_lan "$1" || return 1
     sleep 3
-    phy_start_lan || return 1
+    phy_start_lan "$1" || return 1
     return 0
 }
 
@@ -85,13 +85,13 @@ phy_set_wan_speed() {
 
 case "$1" in
     stop)
-	phy_stop_lan
+	phy_stop_lan "$2"
     ;;
     start)
-	phy_start_lan
+	phy_start_lan "$2"
     ;;
     restart)
-	phy_restart_lan
+	phy_restart_lan "$2"
         exit $?
     ;;
     gwan)

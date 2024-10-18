@@ -7,11 +7,14 @@ local xqlanwanutil = require "xiaoqiang.util.XQLanWanUtil"
 local remote_addr = luci.http.getenv("REMOTE_ADDR")
 local mac = string.upper(luci.sys.net.ip4mac(remote_addr))
 local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
+local XQSysUtil = require "xiaoqiang.util.XQSysUtil"
+local hardware = string.lower( XQSysUtil.getHardware() )
 %>
 <%include("web/inc/head")%>
 <title><%:小米路由器%></title>
 <meta name="viewport" content="width=1200">
 <link href="<%=resource%>/web/css/bc.css?v=<%=ver%>" rel="stylesheet">
+<link href="<%=resource%>/web/css/layout.css?v=<%=ver%>" rel="stylesheet">
 <link href="<%=resource%>/web/css/wan.css?v=<%=ver%>" rel="stylesheet">
 </head>
 <body>
@@ -21,13 +24,14 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
         <div class="mod-set mod-wan">
             <div class="hd">
                 <h3><%:上网信息%></h3>
-<!--                <span id="wanType"><%:正在检测上网连接方式，请稍等...%></span>-->
+                <!-- <span id="wanType"><%:正在检测上网连接方式，请稍等...%></span> -->
             </div>
             <div class="bd">
                 <div class="mod-set-wan" id="wanStatus"></div>
+                <div class="mod-set-wan" style="min-height: 0" id="wanStatus_ipv6"></div>
             </div>
         </div>
-         <div class="mod-set mod-wan">
+        <div class="mod-set mod-wan">
             <div class="hd">
                 <h3><%:上网设置%></h3>
             </div>
@@ -72,7 +76,7 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                                     <div class="form-item">
                                         <label class="k"><%:MTU%></label>
                                         <span class="v">
-                                            <input type="text" name="mtu" class="ipt-text" value="1480" autocomplete="off" reqMsg="<%:MTU%>" datatype="n" minValue="576" maxValue="1492">
+                                            <input type="text" id="mtu" name="mtu" class="ipt-text" value="1480" autocomplete="off" reqMsg="<%:MTU%>" datatype="n" minValue="576" maxValue="1492">
                                         </span>
                                         <em class="t"><%:字节（网络正常情况下不建议修改）%></em>
                                     </div>
@@ -98,6 +102,56 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                                         <em class="t"></em>
                                     </div>
                                 </div>
+
+                                <%if false then%>
+                                    <div class="form-item">
+                                        <div class="form-item-select">
+                                        <label class="k labelHeight"><%:其他运营商设置%></label>
+                                        <span class="v">
+                                            <select name="networkselect" id="networkselect0" class="beautify networkselect">
+                                            <option value="0"><%:无设置%></option>
+                                            <option value="1">Poland-Orange</option>
+                                            <option value="2">New Zealand-UFB</option>
+                                            <option value="3">Portugal-MEO</option>
+                                            <option value="4">Portugal-Vodafone</option>
+                                            <option value="5">Malaysia-Maxis</option>
+                                            <option value="6">Singapore-Singtel</option>
+                                            <option value="7">Vietnam-Viettel</option>
+                                            <option value="8">Malaysia-Unifi</option>
+                                            <option value="9">Singapore-ExStream</option>
+                                            <option value="10">Australia-NBN</option>
+                                            <option value="11"><%:自定义%></option>
+                                            </select>
+                                        </span>
+                                    </div>
+                                    </div>
+                                    <!-- <div class="form-item">
+                                        <label class="k"><%:Internet VLAN ID%></label>
+                                        <span class="v">
+                                            <input type="number" id="vlanId" name="vlanId" class="ipt-text" autocomplete="off" maxlength="4">
+                                        </span>
+                                        <em class="t"></em>
+                                    </div> -->
+                                    <div class="vlanIdItem vlanIdItem0">
+                                        <div class="form-item">
+                                            <label class="k"><%:Internet VLAN ID%>(1~4094)</label>
+                                            <span class="v">
+                                                <input type="text" onkeyup='this.value=this.value.replace(/[^\d]/g,"")' id="vlanId0"  name="vlanId0" class="ipt-text" autocomplete="off" maxlength="4" datatype="vlan" reqMsg="<%:Internet VLAN%>">
+                                            </span>
+                                            <em class="t"></em>
+                                        </div>
+                                    </div>
+                                    <div class="valnPriortyItem valnPriortyItem0">
+                                        <div class="form-item">
+                                            <label class="k"><%:Internet VLAN优先级%>(0~7)</label>
+                                            <span class="v">
+                                                <input type="text" onkeyup='this.value=this.value.replace(/[^\d]/g,"")' id="valnPriorty0" name="valnPriorty0" class="ipt-text" autocomplete="off" maxlength="1" datatype="valnpriorty" reqMsg="<%:Internet VLAN优先级%>">
+                                            </span>
+                                            <em class="t"></em>
+                                        </div>
+                                    </div>
+                                    <div class="form-item"><%:注：可设置运营商提供的网络VLAN ID，如不需要VLAN设置，请忽略。%></div>
+                                <%end%>
                                 <div class="form-contral clearfix">
                                     <button type="submit" class="btn btn-primary btn-m l hidden"><span><%:应用%></span></button> <a href="#" class="btn btn-dft btn-m r btncancelset hidden"><span><%:取消%></span></a>
                                 </div>
@@ -127,6 +181,56 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                                         <em class="t"></em>
                                     </div>
                                 </div>
+
+                                <%if false then%>
+                                    <div class="form-item">
+                                        <div class="form-item-select">
+                                        <label class="k labelHeight"><%:其他运营商设置%></label>
+                                        <span class="v">
+                                            <select name="networkselect" id="networkselect1" class="beautify networkselect">
+                                            <option value="0"><%:无设置%></option>
+                                            <option value="1">Poland-Orange</option>
+                                            <option value="2">New Zealand-UFB</option>
+                                            <option value="3">Portugal-MEO</option>
+                                            <option value="4">Portugal-Vodafone</option>
+                                            <option value="5">Malaysia-Maxis</option>
+                                            <option value="6">Singapore-Singtel</option>
+                                            <option value="7">Vietnam-Viettel</option>
+                                            <option value="8">Malaysia-Unifi</option>
+                                            <option value="9">Singapore-ExStream</option>
+                                            <option value="10">Australia-NBN</option>
+                                            <option value="11"><%:自定义%></option>
+                                            </select>
+                                        </span>
+                                    </div>
+                                    </div>
+                                    <!-- <div class="form-item">
+                                        <label class="k"><%:Internet VLAN ID%></label>
+                                        <span class="v">
+                                            <input type="number" id="vlanId" name="vlanId" class="ipt-text" autocomplete="off" maxlength="4">
+                                        </span>
+                                        <em class="t"></em>
+                                    </div> -->
+                                    <div class="vlanIdItem vlanIdItem1">
+                                        <div class="form-item">
+                                            <label class="k"><%:Internet VLAN ID%>(1~4094)</label>
+                                            <span class="v">
+                                                <input type="text" onkeyup='this.value=this.value.replace(/[^\d]/g,"")' id="vlanId1"  value="" name="vlanId1" class="ipt-text" autocomplete="off" maxlength="4" datatype="vlan" reqMsg="<%:Internet VLAN%>">
+                                            </span>
+                                            <em class="t"></em>
+                                        </div>
+                                    </div>
+                                    <div class="valnPriortyItem valnPriortyItem1">
+                                        <div class="form-item">
+                                            <label class="k"><%:Internet VLAN优先级%>(0~7)</label>
+                                            <span class="v">
+                                                <input type="text" onkeyup='this.value=this.value.replace(/[^\d]/g,"")' id="valnPriorty1" name="valnPriorty1" class="ipt-text" autocomplete="off" maxlength="1" datatype="valnpriorty" reqMsg="<%:Internet VLAN优先级%>">
+                                            </span>
+                                            <em class="t"></em>
+                                        </div>
+                                    </div>
+                                    <div class="form-item"><%:注：可设置运营商提供的网络VLAN ID，如不需要VLAN设置，请忽略。%></div>
+                                <%end%>
                                 <div class="form-contral clearfix">
                                     <button type="submit" class="btn btn-primary btn-m l hidden"><span><%:应用%></span></button> <a href="#" class="btn btn-dft btn-m r btncancelset hidden"><span><%:取消%></span></a>
                                 </div>
@@ -171,6 +275,56 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                                     </span>
                                     <em class="t"><%:选填%></em>
                                 </div>
+
+                                <%if false then%>
+                                    <div class="form-item">
+                                        <div class="form-item-select">
+                                        <label class="k labelHeight"><%:其他运营商设置%></label>
+                                        <span class="v">
+                                            <select name="networkselect" id="networkselect2" class="beautify networkselect">
+                                            <option value="0"><%:无设置%></option>
+                                            <option value="1">Poland-Orange</option>
+                                            <option value="2">New Zealand-UFB</option>
+                                            <option value="3">Portugal-MEO</option>
+                                            <option value="4">Portugal-Vodafone</option>
+                                            <option value="5">Malaysia-Maxis</option>
+                                            <option value="6">Singapore-Singtel</option>
+                                            <option value="7">Vietnam-Viettel</option>
+                                            <option value="8">Malaysia-Unifi</option>
+                                            <option value="9">Singapore-ExStream</option>
+                                            <option value="10">Australia-NBN</option>
+                                            <option value="11"><%:自定义%></option>
+                                            </select>
+                                        </span>
+                                    </div>
+                                    </div>
+                                    <!-- <div class="form-item">
+                                        <label class="k"><%:Internet VLAN ID%></label>
+                                        <span class="v">
+                                            <input type="number" id="vlanId" name="vlanId" class="ipt-text" autocomplete="off" maxlength="4">
+                                        </span>
+                                        <em class="t"></em>
+                                    </div> -->
+                                    <div class="vlanIdItem vlanIdItem2">
+                                        <div class="form-item">
+                                            <label class="k"><%:Internet VLAN ID%>(1~4094)</label>
+                                            <span class="v">
+                                                <input type="text" onkeyup='this.value=this.value.replace(/[^\d]/g,"")' id="vlanId2"  name="vlanId2" class="ipt-text" autocomplete="off" maxlength="4" datatype="vlan" reqMsg="<%:Internet VLAN%>">
+                                            </span>
+                                            <em class="t"></em>
+                                        </div>
+                                    </div>
+                                    <div class="valnPriortyItem valnPriortyItem2">
+                                        <div class="form-item ">
+                                            <label class="k"><%:Internet VLAN优先级%>(0~7)</label>
+                                            <span class="v">
+                                                <input type="text" onkeyup='this.value=this.value.replace(/[^\d]/g,"")' id="valnPriorty2" name="valnPriorty2" class="ipt-text" autocomplete="off" maxlength="1" datatype="valnpriorty" reqMsg="<%:Internet VLAN优先级%>">
+                                            </span>
+                                            <em class="t"></em>
+                                        </div>
+                                    </div>
+                                    <div class="form-item"><%:注：可设置运营商提供的网络VLAN ID，如不需要VLAN设置，请忽略。%></div>
+                                <%end%>
                                 <div class="form-contral clearfix">
                                     <button type="submit" class="btn btn-primary btn-m l hidden"><span><%:应用%></span></button> <a href="#" class="btn btn-dft btn-m r btncancelset hidden"><span><%:取消%></span></a>
                                 </div>
@@ -180,7 +334,7 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                 </div>
             </div>
         </div>
-
+        <%if hardware ~= "d01" then%>
         <div class="mod-set mod-wanspeed">
             <div class="hd">
                 <h3><%:WAN口速率%></h3>
@@ -200,7 +354,7 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                 </form>
             </div>
         </div>
-
+        <%end%>
         <div class="mod-set mod-macclone">
             <div class="hd">
                 <h3><%:MAC地址克隆%></h3>
@@ -227,8 +381,156 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                 </form>
             </div>
         </div>
-        <%include("web/inc/netmod")%>
+         <%if hardware ~= "d01" then%>
+            <%include("web/inc/netmod")%>
+        <%end%>
         <a id="netmode" name="netmode"></a>
+
+        <!-- ipv6 -->
+        <div class="mod-set mod-wifi" id="ipv6_set">
+            <div class="hd">
+                <h3><%:IPV6网络设置%></h3>
+                <div class="switch">
+                    <a href="#ipv6switch" id="ipv6switch" class="btn-switch btn-switch-off" data-on="0"></a>
+                </div>
+            </div>
+            <div class="bd ipv6-off">
+                <p><%:启用此功能后，小米路由器将开启IPv6上网功能（使用前请咨询网络运营商是否支持IPv6）%></p>
+            </div>
+            <div class="bd ipv6-on" style="display:none" id="ipv6_on">
+                 <div class="mod-set-wan" id="ipv6Set">
+                    <div class="tab clearfix">
+                        <div class="form-item-select">
+                            <label class="k"><%:上网方式%></label>
+                            <span class="v">
+                                <select name="ipv6select" id="ipv6select" class="beautify">
+                                    <option value="0">Native</option>
+                                    <option value="2">NAT6</option>
+                                    <option value="1"><%:静态IPv6%></option>
+                                    
+                                </select>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="tab-con">
+                        <!-- native -->
+                        <div class="tab-con-item">
+                            <form action="#" name="native" id="native" class="form form-native" autocomplete="off">
+                                <input type="hidden" name="wanType" value="native">
+                                <div class="item-more">
+                                    <label><input class="setipv6more" type="radio" name="autosetipv6" value="0" checked="checked"> <span><%:自动配置DNS%></span></label>
+                                    <label><input class="setipv6more" type="radio" name="autosetipv6" value="1" > <span><%:手动配置DNS%></span></label>
+                                </div>
+                                <div class="item-more-group clearfix">
+                                     <div class="form-item">
+                                        <label class="k"><%:DNS1%></label>
+                                        <span class="v">
+                                            <input type="text" name="dns1" class="ipt-text" autocomplete="off" datatype="ipv6addr" reqMsg="<%:DNS1%>">
+                                        </span>
+                                        <em class="t"><%:必填%></em>
+                                    </div>
+                                    <div class="form-item">
+                                        <label class="k"><%:DNS2%></label>
+                                        <span class="v">
+                                            <input type="text" name="dns2" class="ipt-text" autocomplete="off" datatype="ipv6addr">
+                                        </span>
+                                        <em class="t"><%:选填%></em>
+                                    </div>
+                                </div>
+                                <div class="form-contral clearfix  ipv6-native-btn">
+                                    <button type="submit" class="btn btn-primary btn-m l hidden"><span><%:应用%></span></button> <a href="#" class="btn btn-dft btn-m r btncancelset hidden"><span><%:取消%></span></a>
+                                </div>
+                            </form>
+                        </div>
+                        <!-- static ipv6 -->
+                        <div class="tab-con-item">
+                            <form action="#" name="static-ipv6" id="static-ipv6" class="form form-static" autocomplete="off" autocomplete="off">
+                                <input type="hidden" name="wanType" value="static">
+                                <div class="form-item">
+                                    <label class="k"><%:WAN IPv6地址%></label>
+                                    <span class="v">
+                                        <input type="text" name="ipaddr" class="ipt-text" autocomplete="off" datatype="ipv6addr" reqMsg="<%:IP地址%>">
+                                    </span>
+                                    <em class="t"><%:WAN IPv6地址前缀长度默认为128位%></em>
+                                </div>
+                                <div class="form-item">
+                                    <label class="k"><%:WAN IPv6网关%></label>
+                                    <span class="v">
+                                        <input type="text" name="gw" class="ipt-text" autocomplete="off" datatype="ipv6wanaddr" reqMsg="<%:网关%>">
+                                    </span>
+                                    <em class="t"></em>
+                                </div>
+                                 <div class="form-item">
+                                    <label class="k"><%:LAN IPv6前缀%></label>
+                                    <span class="v">
+                                        <input type="text" name="prefix" class="ipt-text" autocomplete="off" datatype="ipv6addrprefixtest" teqMsg="<%:前缀%>">
+                                    </span>
+                                    <em class="t"><%:LAN IPv6前缀需要以::结尾%></em>
+                                </div>
+                                 <div class="form-item">
+                                    <label class="k"><%:LAN IPv6前缀长度%></label>
+                                     <span class="v">
+                                        <input type="text" name="assign" class="ipt-text" autocomplete="off" datatype="n"  n-pattern="2" minValue="16" maxValue="64" reqMsg="<%:前缀长度%>">
+                                    </span>
+                                    <em class="t"></em>
+                                </div>
+                                <div class="form-item">
+                                    <label class="k"><%:DNS1%></label>
+                                    <span class="v">
+                                        <input type="text" name="dns1" class="ipt-text" autocomplete="off" datatype="ipv6addr" reqMsg="<%:DNS1%>">
+                                    </span>
+                                    <em class="t"><%:必填%></em>
+                                </div>
+                                <div class="form-item">
+                                    <label class="k"><%:DNS2%></label>
+                                    <span class="v">
+                                        <input type="text" name="dns2" class="ipt-text" autocomplete="off" datatype="ipv6addr">
+                                    </span>
+                                    <em class="t"><%:选填%></em>
+                                </div>
+                                <div class="form-contral clearfix  ipv6-static-btn">
+                                    <button type="submit" class="btn btn-primary btn-m l hidden"><span><%:应用%></span></button> <a href="#" class="btn btn-dft btn-m r btncancelset hidden"><span><%:取消%></span></a>
+                                </div>
+                            </form>
+                        </div>
+
+
+                        <!-- native -->
+                        <div class="tab-con-item">
+                            <form action="#" name="nat" id="nat" class="form form-native" autocomplete="off">
+                                <input type="hidden" name="wanType" value="nat">
+
+                                 <div class="item-more">
+                                    <label><input class="setipv6more" type="radio" name="autosetipv6" value="0" checked="checked"> <span><%:自动配置DNS%></span></label>
+                                    <label><input class="setipv6more" type="radio" name="autosetipv6" value="1" > <span><%:手动配置DNS%></span></label>
+                                </div>
+                                <div class="item-more-group clearfix">
+                                     <div class="form-item">
+                                        <label class="k"><%:DNS1%></label>
+                                        <span class="v">
+                                            <input type="text" name="dns1" class="ipt-text" autocomplete="off" datatype="ipv6addr" reqMsg="<%:DNS1%>">
+                                        </span>
+                                        <em class="t"><%:必填%></em>
+                                    </div>
+                                    <div class="form-item">
+                                        <label class="k"><%:DNS2%></label>
+                                        <span class="v">
+                                            <input type="text" name="dns2" class="ipt-text" autocomplete="off" datatype="ipv6addr">
+                                        </span>
+                                        <em class="t"><%:选填%></em>
+                                    </div>
+                                </div>
+
+                                <p style="margin-bottom:20px;"><%:适用于没有给路由分配IPv6前缀的上网环境，例如：上级光猫拨号%></p>
+                                <div class="form-contral clearfix  ipv6-native-btn">
+                                    <button type="submit" class="btn btn-primary btn-m l hidden"><span><%:应用%></span></button> <a href="#" class="btn btn-dft btn-m r btncancelset hidden"><span><%:取消%></span></a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <%include("web/inc/footer")%>
@@ -251,7 +553,12 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
         </span></li>
         <li class="nofloat"><span class="k"><%:外网状态：%></span><span class="v">{$status} {$action}</span></li>
         {if($showissue)}
-        <li><span class="k"></span><span class="v"><a href="#" id="showpppoeissue" data-perror = "{$perror}"><%:问题排查%></a></span></li>
+            <li>
+                <span class="k"></span>
+                <span class="v">
+                   <a href="#" id="showpppoeissue" data-perror = "{$perror}"><%:问题排查%></a>
+                </span>
+            </li>
         {/if}
     </ul>
 </div>
@@ -382,6 +689,7 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
     </ul>
 </div>
 </script>
+
 <script type="tmpl/text" id="tmplStaticIP">
 <div class="wanStatus">
     <ul>
@@ -399,19 +707,135 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
     </ul>
 </div>
 </script>
+
+<script type="tmpl/text" id="tmplDHCP_ipv6">
+<div class="wanStatus">
+     <ul>
+        <li><span class="k"><%:IPv6连接类型：%></span><span class="v">Native</span></li>
+        <li><span class="k"><%:WAN IPv6地址：%></span><span class="v">
+        {if($ip.length > 0 )}
+            {for(var i=0; i<$ip.length;i++)}
+            {$ip[i]} <br/>
+            {/for}
+        {/if}
+        </span></li>
+        <li><span class="k"><%:WAN IPv6网关：%></span><span class="v">{$gateway}</span></li>
+
+        <li><span class="k"><%:LAN IPv6地址：%></span><span class="v">{$in_ip}</span></li>
+        <li><span class="k"><%:LAN IPv6前缀：%></span><span class="v">
+         {if($in_prefix.length > 0 )}
+            {for(var i=0; i<$in_prefix.length;i++)}
+            {$in_prefix[i]} <br/>
+            {/for}
+        {/if}
+        </span></li>
+        <li class="nofloat"><span class="k"><%:DNS：%></span><span class="v">
+        {if($dns.length > 0 )}
+            {for(var i=0; i<$dns.length;i++)}
+            {$dns[i]} <br/>
+            {/for}
+        {/if}
+        </span></li>
+    </ul>
+</div>
+</script>
+
+<script type="tmpl/text" id="tmplStaticIP_ipv6">
+<div class="wanStatus">
+    <ul>
+        <li><span class="k"><%:IPv6连接类型：%></span><span class="v"></span>静态IPv6</li>
+        <li><span class="k"><%:WAN IPv6地址：%></span><span class="v">
+        {if($ip.length > 0 )}
+            {for(var i=0; i<$ip.length;i++)}
+            {$ip[i]} <br/>
+            {/for}
+        {/if}
+        </span></li>
+        <li><span class="k"><%:WAN IPv6网关：%></span><span class="v">{$gateway}</span></li>
+
+        <li><span class="k"><%:LAN IPv6地址：%></span><span class="v">{$in_ip}</span></li>
+        <li><span class="k"><%:LAN IPv6前缀：%></span><span class="v">
+         {if($in_prefix.length > 0 )}
+            {for(var i=0; i<$in_prefix.length;i++)}
+            {$in_prefix[i]} <br/>
+            {/for}
+        {/if}
+        </span></li>
+        <li class="nofloat"><span class="k"><%:DNS：%></span><span class="v">
+        {if($dns.length > 0 )}
+            {for(var i=0; i<$dns.length;i++)}
+            {$dns[i]} <br/>
+            {/for}
+        {/if}
+        </span></li>
+    </ul>
+</div>
+</script>
+
+<script type="tmpl/text" id="tmploff_ipv6">
+<div class="wanStatus">
+    <ul>
+        <li><span class="k"><%:IPv6连接类型：%></span><span class="v">None</span></li>
+    </ul>
+</div>
+</script>
+<script type="tmpl/text" id="tmplNAT6_ipv6">
+<div class="wanStatus">
+    <ul>
+        <li><span class="k"><%:IPv6连接类型：%></span><span class="v">NAT6</span></li>
+        <li><span class="k"><%:WAN IPv6地址：%></span><span class="v">
+        {if($ip.length > 0 )}
+            {for(var i=0; i<$ip.length;i++)}
+            {$ip[i]} <br/>
+            {/for}
+        {/if}
+        </span></li>
+        <li><span class="k"><%:WAN IPv6网关：%></span><span class="v">{$gateway}</span></li>
+
+        <li><span class="k"><%:LAN IPv6地址：%></span><span class="v">{$in_ip}</span></li>
+        <li><span class="k"><%:LAN IPv6前缀：%></span><span class="v">
+         {if($in_prefix.length > 0 )}
+            {for(var i=0; i<$in_prefix.length;i++)}
+            {$in_prefix[i]} <br/>
+            {/for}
+        {/if}
+        </span></li>
+        <li class="nofloat"><span class="k"><%:DNS：%></span><span class="v">
+        {if($dns.length > 0 )}
+            {for(var i=0; i<$dns.length;i++)}
+            {$dns[i]} <br/>
+            {/for}
+        {/if}
+        </span></li>
+    </ul>
+</div>
+</script>
 <%include("web/inc/g.js")%>
 <script>
 (function(){
     var timer = null,
         dlgwait,
         askcount = 0,
-        cachePPPoE = {};
-    $.sub( 'wanswitch', function( evt, data ){
+        cachePPPoE = {},
+        ipv6isOn = true,
+        ipv6 = {};
+    var initNetworkIndex = 0;//初始接口取值 下拉框
+    var initVlanInternetVid = 0;
+    var initVlanInternetPri = 0;
+    var wanTypeIndex = 0;//上网方式选择
+    $.sub( 'wanswitch', function( evt, data,data1){
         var root = $('#wanSet'),
             status = $('#wanStatus'),
             tab = root.find( '#wantypeselect' ),
             tabCon = root.find( '.tab-con-item' ),
+            vlanId0 = root.find( '.vlanIdItem0' ),
+            vlanId1 = root.find( '.vlanIdItem1' ),
+            vlanId2 = root.find( '.vlanIdItem2' ),
+            valnPriorty0 = root.find( '.valnPriortyItem0' ),
+            valnPriorty1 = root.find( '.valnPriortyItem1' ),
+            valnPriorty2 = root.find( '.valnPriortyItem2' ),
             index = data['index'];
+            wanTypeIndex = index;
         tab.val(index);
         tabCon.removeClass( 'active' ).eq( index ).addClass( 'active' );
         if (index === '0') {
@@ -422,8 +846,167 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                 $pppoePwd.val( cachePPPoE['pppoePassword'] );
                 $.formInit('#pppoe');
             }
+            if($("#networkselect0").val() == "0"){
+                vlanId0.hide();
+                valnPriorty0.hide();
+            }else{
+                vlanId0.show();
+                valnPriorty0.show();
+                if($("#networkselect0").val() == "11"){
+                    vlanId0.find('input,select').prop('disabled', false);
+                    vlanId0.find('.form-item').removeClass('form-item-disabled');
+                    valnPriorty0.find('input,select').prop('disabled', false);
+                    valnPriorty0.find('.form-item').removeClass('form-item-disabled'); 
+                }
+            }
+            
+        }else if (index  === '1'){
+            if($("#networkselect1").val() == "0"){
+                vlanId1.hide();
+                valnPriorty1.hide();
+            }else{
+                vlanId1.show();
+                valnPriorty1.show();
+                if($("#networkselect1").val() == "11"){
+                    vlanId1.find('input,select').prop('disabled', false);
+                    vlanId1.find('.form-item').removeClass('form-item-disabled');
+                    valnPriorty1.find('input,select').prop('disabled', false);
+                    valnPriorty1.find('.form-item').removeClass('form-item-disabled'); 
+                }
+            }
+        }
+        else if (index  === '2'){
+            if($("#networkselect2").val() == "0"){
+                vlanId2.hide();
+                valnPriorty2.hide();
+            }else{
+                vlanId2.show();
+                valnPriorty2.show();
+                if($("#networkselect2").val() == "11"){
+                    vlanId2.find('input,select').prop('disabled', false);
+                    vlanId2.find('.form-item').removeClass('form-item-disabled');
+                    valnPriorty2.find('input,select').prop('disabled', false);
+                    valnPriorty2.find('.form-item').removeClass('form-item-disabled'); 
+                }
+            }
+        }
+        //bug fix XP-34766
+        $(".labelHeight").each(function(){
+            var height = $(this).height();
+             $(this).parents(".form-item-select").children().children(".ipt-text").height(height) 
+        })
+        // /$.pub( 'networkswitch', [{index: initNetworkIndex}] );
+    } );
+    //运营商设置
+    $.sub( 'networkswitch', function( evt, data ){
+        var root = $('#wanSet'),
+           // status = $('#wanStatus'),
+            tab = root.find( '#networkswitch' ),
+            vlanId = root.find( '.vlanIdItem' ),
+            vlanId0 = root.find( '.vlanIdItem0' ),
+            vlanId1 = root.find( '.vlanIdItem1' ),
+            vlanId2 = root.find( '.vlanIdItem2' ),
+            valnPriorty = root.find( '.valnPriortyItem' ),
+            valnPriorty0 = root.find( '.valnPriortyItem0' ),
+            valnPriorty1 = root.find( '.valnPriortyItem1' ),
+            valnPriorty2 = root.find( '.valnPriortyItem2' ),
+            index = data['index'];
+            vlanId.hide();
+            valnPriorty.hide();
+            if(index){
+                getNetworkValue(index,wanTypeIndex);
+            }else{
+                getNetworkValue(1,wanTypeIndex);
+            }
+            
+        //tab.val(index);
+       // tabCon.removeClass( 'active' ).eq( index ).addClass( 'active' );
+        if (index == 0 || index == '0') {           
+           if(wanTypeIndex == "0"){
+                
+                vlanId0.hide();
+                valnPriorty0.hide();
+
+            }else if (wanTypeIndex == "1"){
+                
+                vlanId1.hide();
+                valnPriorty1.hide();
+            }else if (wanTypeIndex == "2"){
+                
+                vlanId2.hide();
+                valnPriorty2.hide();
+            }
+            
+        }else{   
+           vlanId.find('input,select').prop('disabled', true);
+            vlanId.find('.form-item').addClass('form-item-disabled');
+            valnPriorty.find('input,select').prop('disabled', true);
+            valnPriorty.find('.form-item').addClass('form-item-disabled');
+            if(wanTypeIndex == "0"){
+                vlanId0.show();
+                valnPriorty0.show();
+                if(index==11 || index=='11'){
+                    vlanId0.find('input,select').prop('disabled', false);
+                    vlanId0.find('.form-item').removeClass('form-item-disabled');
+                    valnPriorty0.find('input,select').prop('disabled', false);
+                    valnPriorty0.find('.form-item').removeClass('form-item-disabled'); 
+                }
+            }else if (wanTypeIndex == "1"){
+                vlanId1.show();
+                valnPriorty1.show();
+                if(index==11 || index=='11'){
+                    vlanId1.find('input,select').prop('disabled', false);
+                    vlanId1.find('.form-item').removeClass('form-item-disabled');
+                    valnPriorty1.find('input,select').prop('disabled', false);
+                    valnPriorty1.find('.form-item').removeClass('form-item-disabled'); 
+                }
+            }else if (wanTypeIndex == "2"){
+                vlanId2.show();
+                valnPriorty2.show();
+                if(index==11 || index=='11'){
+                    vlanId2.find('input,select').prop('disabled', false);
+                    vlanId2.find('.form-item').removeClass('form-item-disabled');
+                    valnPriorty2.find('input,select').prop('disabled', false);
+                    valnPriorty2.find('.form-item').removeClass('form-item-disabled'); 
+                }
+            }
+            
+        }
+        //判断不为自定义不可输入
+        // if(index!=11 || index!='11'){
+        //     vlanId.find('input,select').prop('disabled', true);
+        //     vlanId.find('.form-item').addClass('form-item-disabled');
+        //     valnPriorty.find('input,select').prop('disabled', true);
+        //     valnPriorty.find('.form-item').addClass('form-item-disabled');
+        // }else{
+        //     vlanId.find('input,select').prop('disabled', false);
+        //     vlanId.find('.form-item').removeClass('form-item-disabled');
+        //     valnPriorty.find('input,select').prop('disabled', false);
+        //     valnPriorty.find('.form-item').removeClass('form-item-disabled');
+        // }
+        
+    } );
+
+    $.sub( 'ipv6select', function( evt, data ){
+        var root = $('#ipv6Set'),
+            tab = root.find( '#ipv6select' ),
+            tabCon = root.find( '.tab-con-item' ),
+            index = data['index'];
+        tab.val(index);
+        tabCon.removeClass( 'active' ).eq( index ).addClass( 'active' );
+        if (index === '1') {
+            // static ipv6 form
+            ipv6.dns_conf = ipv6.dns_conf?ipv6.dns_conf:[null,null];
+            $( '#static-ipv6 input[name="ipaddr"]' ).val( ipv6.ip6addr_conf );
+            $( '#static-ipv6 input[name="gw"]' ).val( ipv6.ip6gw_conf );
+            $( '#static-ipv6 input[name="prefix"]' ).val( ipv6.ip6prefix_conf );
+            $( '#static-ipv6 input[name="assign"]' ).val( ipv6.ip6assign_conf);
+            $( '#static-ipv6 input[name="dns1"]' ).val( ipv6.dns_conf[0] );
+            $( '#static-ipv6 input[name="dns2"]' ).val( ipv6.dns_conf[1] );
+            $.formInit('#static-ipv6');
         }
     } );
+
 
     $.sub( 'fillwanform', function( evt, data ){
         var rsp = data,
@@ -442,6 +1025,8 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                 return dtd.promise();
             };
         if ( wantype === 'pppoe' ){
+            var vlanInfo = getValnInfo();
+            $('#networkselect0').val(vlanInfo.internet_profile);
             $( 'input[name="pppoeName"]' ).val( rsp.info.details.username );
             $( 'input[name="pppoePwd"]' ).val( rsp.info.details.password );
             // mtu
@@ -458,30 +1043,55 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
             // special
             var special = rsp.info.special;
             if ( special == '1' ) {
-                isauto = false;
                 $('input[name=special]').prop('checked', true);
             } else {
+                isauto = false;
                 $('input[name=special]').prop('checked', false);
             }
 
             $('#wantypeselect').val(0);
+            $('.networkselect').val(initNetworkIndex);
             $.pub( 'wanswitch', [{index: '0'}] );
+            
+            $.pub( 'networkswitch', [{index: initNetworkIndex}] );
+            getNetworkValue(initNetworkIndex,0);
+            getNetworkValue(initNetworkIndex,1);
+            getNetworkValue(initNetworkIndex,2);
+
         }
         if ( wantype === 'static' ){
+            var vlanInfo = getValnInfo();
+            $('#networkselect2').val(vlanInfo.internet_profile);
             $( 'input[name="staticIp"]' ).val( rsp.info.details.ipaddr );
             $( 'input[name="staticMask"]' ).val( rsp.info.details.netmask );
             $( 'input[name="staticGateway"]' ).val( rsp.info.details.gateway );
             $('#wantypeselect').val(2);
             $.pub( 'wanswitch', [{index: '2'}] );
+            $('.networkselect').val(initNetworkIndex);
+            $.pub( 'networkswitch', [{index: initNetworkIndex}] );
+            getNetworkValue(initNetworkIndex,0);
+            getNetworkValue(initNetworkIndex,1);
+            getNetworkValue(initNetworkIndex,2);
         }
         if ( wantype === 'dhcp') {
+            var vlanInfo = getValnInfo();
+            $('#networkselect1').val(vlanInfo.internet_profile);
+            $('.networkselect').val(initNetworkIndex);
+            
             $('#wantypeselect').val(1);
             $.pub( 'wanswitch', [{index: '1'}] );
+            $.pub( 'networkswitch', [{index: initNetworkIndex}] );
+            getNetworkValue(initNetworkIndex,0);
+            getNetworkValue(initNetworkIndex,1);
+            getNetworkValue(initNetworkIndex,2);
         }
         var dnslist = rsp.info.details.dns;
         if ( dnslist && $.isArray( dnslist ) && dnslist.length > 0 ) {
             for (var i = 0; i < dnslist.length; i++) {
-                $( 'input[name="dns' + (i + 1)  + '"]' ).val( dnslist[i] );
+                // console.log('dns....');
+
+                $( '#wanStatus input[name="dns' + (i + 1)  + '"]' ).val( dnslist[i] );
+                $( '#wanSet input[name="dns' + (i + 1)  + '"]' ).val( dnslist[i] );
             }
             isauto = false;
         }
@@ -491,7 +1101,227 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
             $.selectBeautify({ container:'#wanSet'});
         });
 
+        $(".labelHeight").each(function(){
+            var height = $(this).height();
+             $(this).parents(".form-item-select").children().children(".ipt-text").height(height) 
+        })
+       
+
     } );
+
+
+    function setto_ipv6_native_auto(){
+        $('#ipv6select').val(0);
+        $.pub('ipv6select', [{index: '0'}] );
+        setTimeout(function(){
+            $('#ipv6Set .dummy').html('Native');
+        },200);
+        $(".setipv6more[value=0]").prop("checked", true);
+        $('#native .item-more-group').find('input').prop('disabled', true);
+        $('#native input[name="dns1"]').val('');
+        $('#native input[name="dns2"]').val('');
+        $('#nat .item-more-group').find('input').prop('disabled', true);
+        $('#nat input[name="dns1"]').val('');
+        $('#nat input[name="dns2"]').val('');
+
+
+    }
+    // ipv6 form and top_info
+    $.sub('fillipv6form', function( evt, data ){
+        var rsp = data,
+            ipv6 = rsp.info.ipv6_info,
+            wantype = rsp.info.ipv6_info.wanType;
+
+
+
+            //set form to native auto
+            setto_ipv6_native_auto();
+
+        if(wantype !== "none" && wantype !== "off"){
+
+
+            $('input[name=mtu]').attr('minValue', 1280);
+            // $('input[name=mtu]').attr('maxValue', 1492);
+            $('#ipv6switch').removeClass('btn-switch-off')
+                            .addClass('btn-switch-on')
+                            .attr('data-on', '1');
+            $('.ipv6-off').hide();
+            $('.ipv6-on').show();
+
+            if(wantype === "native"){ 
+                // native ipv6 form
+                $('#ipv6select').val(0);
+                $.pub('ipv6select', [{index: '0'}] );
+                setTimeout(function(){
+                    $('#ipv6Set .dummy').html('Native');
+                },200);
+
+                var isauto = ipv6.peerdns;
+                if ( isauto != 1 ){ //shoudong 
+                    $(".setipv6more[value=1]").prop("checked", true);
+                    $('#native .item-more-group').find('input').prop('disabled', false);
+                    $('#nat .item-more-group').find('input').prop('disabled', false);
+                    ipv6.dns_conf = ipv6.dns_conf?ipv6.dns_conf:[null,null];
+                    $( '#native input[name="dns1"]' ).val( ipv6.dns_conf[0] );
+                    $( '#native input[name="dns2"]' ).val( ipv6.dns_conf[1] );
+                    $( '#nat input[name="dns1"]' ).val( ipv6.dns_conf[0] );
+                    $( '#nat input[name="dns2"]' ).val( ipv6.dns_conf[1]);
+                    $.formInit();
+                    //$.selectBeautify({ container:'#nat'});
+                    //$.selectBeautify({ container:'#native'});
+                }
+               
+                // toplist
+                var statusHTML = StringH.tmpl( $('#tmplDHCP_ipv6').html(), {
+                    ip: ipv6['ip6addr']?ipv6['ip6addr']:[],
+                    gateway: ipv6['ip6gw']?ipv6['ip6gw']:'',
+                    in_ip: ipv6['lan_ip6addr']?ipv6['lan_ip6addr']:[],
+                    in_prefix: ipv6['lan_ip6prefix']?ipv6['lan_ip6prefix']:[],
+                    out_prefix: ipv6['prefix']?ipv6['prefix']:'',
+                    dns: ipv6['dns']?ipv6['dns']:[],
+                });
+                $('#wanStatus_ipv6').html(statusHTML);    
+
+
+            }else if(wantype === "static"){
+                $('#ipv6select').val(1);
+                $.pub('ipv6select', [{index: '1'}] );
+                
+                ipv6.dns_conf = ipv6.dns_conf?ipv6.dns_conf:[null,null];
+                // static ipv6 form
+                $( '#static-ipv6 input[name="ipaddr"]' ).val( ipv6.ip6addr );
+                $( '#static-ipv6 input[name="gw"]' ).val( ipv6.ip6gw );
+                $( '#static-ipv6 input[name="prefix"]' ).val( ipv6.lan_ip6prefix );
+                $( '#static-ipv6 input[name="assign"]' ).val( ipv6.assign);
+                $( '#static-ipv6 input[name="dns1"]' ).val( ipv6.dns_conf[0]  );
+                $( '#static-ipv6 input[name="dns2"]' ).val( ipv6.dns_conf[1] );
+               
+                $.formInit();
+                // $.selectBeautify({ container: '#ipv6select'});
+
+                setTimeout(function(){
+                    $('#ipv6Set .dummy').html('<%:静态IPv6%>');
+                },200);
+
+                //toplist
+                var statusHTML = StringH.tmpl( $('#tmplStaticIP_ipv6').html(),{
+                    ip: ipv6['ip6addr']?ipv6['ip6addr']:[],
+                    gateway: ipv6['ip6gw']?ipv6['ip6gw']:'',
+                    in_ip: ipv6['lan_ip6addr']?ipv6['lan_ip6addr']:[],
+                    in_prefix: ipv6['lan_ip6prefix']?ipv6['lan_ip6prefix']:[],
+                    out_prefix: ipv6['prefix']?ipv6['prefix']:'',
+                    dns: ipv6['dns']?ipv6['dns']:[]
+                });
+                $('#wanStatus_ipv6').html(statusHTML);
+
+            }else if(wantype === "nat"){
+                //nat form
+                $('#ipv6select').val(2);
+                $.pub('ipv6select', [{index: '2'}] );
+                setTimeout(function(){
+                    $('#ipv6Set .dummy').html('NAT6');
+                },200);
+
+                var isauto = ipv6.peerdns;
+                if ( isauto == 0 ){ //shoudong 
+                    $(".setipv6more[value=1]").prop("checked", true);
+                    $('#native .item-more-group').find('input').prop('disabled', false);
+                    $('#nat .item-more-group').find('input').prop('disabled', false);
+                    ipv6.dns_conf = ipv6.dns_conf?ipv6.dns_conf:[null,null];
+                    $( '#native input[name="dns1"]' ).val( ipv6.dns_conf[0] );
+                    $( '#native input[name="dns2"]' ).val( ipv6.dns_conf[1] );
+                    $( '#nat input[name="dns1"]' ).val( ipv6.dns_conf[0] );
+                    $( '#nat input[name="dns2"]' ).val( ipv6.dns_conf[1] );
+					
+                    $.formInit();
+                    //$.selectBeautify({ container:'#nat'});
+                    //$.selectBeautify({ container:'#native'});   
+                }
+                //nat toplist
+                var statusHTML = StringH.tmpl( $('#tmplNAT6_ipv6').html(),{
+                    ip: ipv6['ip6addr']?ipv6['ip6addr']:[],
+                    gateway: ipv6['ip6gw']?ipv6['ip6gw']:'',
+                    in_ip: ipv6['lan_ip6addr']?ipv6['lan_ip6addr']:[],
+                    in_prefix: ipv6['lan_ip6prefix']?ipv6['lan_ip6prefix']:[],
+                    out_prefix: ipv6['prefix']?ipv6['prefix']:'',
+                    dns: ipv6['dns']?ipv6['dns']:[]
+                });
+                $('#wanStatus_ipv6').html(statusHTML); 
+            }
+
+        }else{
+            // ipv6 switch to off
+
+            $('#ipv6switch').removeClass('btn-switch-on')
+                            .addClass('btn-switch-off')
+                            .attr('data-on', '0');
+            $('.ipv6-off').show();
+            $('.ipv6-on').hide();
+            // ipv6 form
+            setto_ipv6_native_auto();
+            // toplist
+            var statusHTML = StringH.tmpl( $('#tmploff_ipv6').html(),{});
+            $('#wanStatus_ipv6').html(statusHTML);
+        }
+
+    } );
+
+    // ipv6 Top_info
+    $.sub('fillipv6list', function( evt, data ){
+        var rsp = data,
+            ipv6 = rsp.info.ipv6_info,
+            wantype = rsp.info.ipv6_info.wanType;
+
+        if(wantype !== "none" && wantype !== "off"){
+
+            if(wantype === "native"){ 
+               
+                // toplist
+                var statusHTML = StringH.tmpl( $('#tmplDHCP_ipv6').html(), {
+                    ip: ipv6['ip6addr']?ipv6['ip6addr']:[],
+                    gateway: ipv6['ip6gw']?ipv6['ip6gw']:'',
+                    in_ip: ipv6['lan_ip6addr']?ipv6['lan_ip6addr']:[],
+                    in_prefix: ipv6['lan_ip6prefix']?ipv6['lan_ip6prefix']:[],
+                    out_prefix: ipv6['prefix']?ipv6['prefix']:'',
+                    dns: ipv6['dns']?ipv6['dns']:[],
+                });
+                $('#wanStatus_ipv6').html(statusHTML);    
+
+
+            }else if(wantype === "static"){
+
+                //toplist
+                var statusHTML = StringH.tmpl( $('#tmplStaticIP_ipv6').html(),{
+                    ip: ipv6['ip6addr']?ipv6['ip6addr']:[],
+                    gateway: ipv6['ip6gw']?ipv6['ip6gw']:'',
+                    in_ip: ipv6['lan_ip6addr']?ipv6['lan_ip6addr']:[],
+                    in_prefix: ipv6['lan_ip6prefix']?ipv6['lan_ip6prefix']:[],
+                    out_prefix: ipv6['prefix']?ipv6['prefix']:'',
+                    dns: ipv6['dns']?ipv6['dns']:[]
+                });
+                $('#wanStatus_ipv6').html(statusHTML);
+
+            }else if(wantype === "nat"){
+
+                //nat toplist
+                var statusHTML = StringH.tmpl( $('#tmplNAT6_ipv6').html(),{
+                    ip: ipv6['ip6addr']?ipv6['ip6addr']:[],
+                    gateway: ipv6['ip6gw']?ipv6['ip6gw']:'',
+                    in_ip: ipv6['lan_ip6addr']?ipv6['lan_ip6addr']:[],
+                    in_prefix: ipv6['lan_ip6prefix']?ipv6['lan_ip6prefix']:[],
+                    out_prefix: ipv6['prefix']?ipv6['prefix']:'',
+                    dns: ipv6['dns']?ipv6['dns']:[]
+                });
+                $('#wanStatus_ipv6').html(statusHTML); 
+            }
+
+        }else{
+            // toplist
+            var statusHTML = StringH.tmpl( $('#tmploff_ipv6').html(),{});
+            $('#wanStatus_ipv6').html(statusHTML);
+        }
+
+    });
 
     $.sub( 'fillwanstatus', function( evt, data ) {
         var rsp = data,
@@ -502,24 +1332,126 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
 
     $.sub( 'getwaninfo', function(){
         var requestURL = '<%=luci.dispatcher.build_url("api", "xqnetwork","wan_info")%>',
-            requestData = {},
-            wantype;
+            requestData = {};
         $.getJSON( requestURL, requestData, function( rsp ) {
+
             if( rsp.code === 0 ){
+                var mac = rsp.info.mac;
+                if ( mac && mac != "" ){
+                    $( '#currMac' ).text( mac.toUpperCase() );
+                }
                 if( rsp.status === 0 ){
                     return;
                 }
-
                 $.pub( 'fillwanform', [rsp] );
-                $.pub( 'fillwanstatus', [rsp] );
-            }
 
-            $.formInit();
+                //ipv6 渲染
+                ipv6isOn = rsp.info.ipv6_info.wanType !=="off";
+                
+                if((rsp.info && rsp.info.ipv6_show == 1) || !("ipv6_show" in rsp.info)){
+                    $.pub( 'fillipv6form', [rsp] );
+                }else{
+                    $('#wanStatus_ipv6').hide(); 
+                    $('#ipv6_set').hide();
+                }
+                $.pub( 'fillwanstatus', [rsp] );
+
+            }else{
+                $( '#currMac' ).text( '<%:获取失败%>,' + rsp.msg );
+            }      
 
         });
+                     
     } );
 
-    $.sub( 'addEvent', function(){
+
+
+   
+    // ipv6 switch
+    $.formInit();
+    $.selectBeautify({ container:'#ipv6Set'});
+    $( document.body ).delegate( '#ipv6switch', 'click', function( e ){
+        //hidden button
+        $('#ipv6_set').find('form .btn-primary,form .btn-dft').addClass('hidden');
+        $("#static-ipv6")[0].reset();
+        $("#native")[0].reset();
+        e.preventDefault();
+        var ipv6BtnStatus = $(this).attr('data-on') == 1 ? 0 : 1;
+        setto_ipv6_native_auto();
+        if(ipv6BtnStatus){
+            $('#ipv6switch').removeClass('btn-switch-off')
+                            .addClass('btn-switch-on')
+                            .attr('data-on', '1');
+            $('.ipv6-off').hide();
+            $('.ipv6-on').show();
+            //show save button
+            $('#ipv6_set').find('form .btn-primary,form .btn-dft').removeClass('hidden');                     
+        }else{
+            $('#ipv6switch').removeClass('btn-switch-on')
+                            .addClass('btn-switch-off')
+                            .attr('data-on', '0');
+            $('.ipv6-off').show();
+            $('.ipv6-on').hide();
+            if(ipv6isOn){//ipv6原先开着，才关闭
+                clearInterval(timeInterval);
+                wait_ipv6();
+                var requestData = {
+                    wanType: 'off'
+                };
+                $.ajax({
+                    url: '<%=luci.dispatcher.build_url("api", "xqnetwork","set_wan6")%>',
+                    type: "POST",
+                    data: requestData,
+                    dataType: "json",
+                    success : function( rsp ){
+                        if ( rsp.code === 0 ) { 
+
+                            setTimeout(function(){
+                                dlgwait_ipv6.close();
+                                $.alert('<%:关闭IPv6设置成功%>');
+                                $.pub( 'getwaninfo' );
+                            },3000)
+
+                            //// mtu
+        
+                            $('input[name=mtu]').attr('minValue', 576);
+                            
+                            
+                        } else {
+                            $.alert('<%:关闭IPv6设置失败%>');
+                        }
+                    },
+                    error:function (e){
+                        $.alert('<%:关闭IPv6设置失败%>');  
+                    } 
+                });
+
+            }
+            
+        }
+    });
+
+    // ipv6 select
+    $( document.body ).delegate( '#ipv6select', 'change', function( e ){
+        e.preventDefault();
+        var tar = this,
+            $tar = $(tar),
+            switchto = $tar.val();
+        clearTimeout( timer );
+        setTimeout(function(){
+            $.pub( 'ipv6select', [{index: switchto}] );
+        }, 200);
+
+    });
+
+    $('#ipv6_on').delegate('input[type=text], input[type=radio], input[type=checkbox]', 'click', onControlFocus)
+                    .delegate('.ipt-text', 'click', function(){
+                        $(this).parents('#ipv6_set').find('form .btn-primary,form .btn-dft').removeClass('hidden');
+                    });
+
+
+
+    // $.sub( 'addEvent', function(){
         $( document.body ).delegate( '#wantypeselect', 'change', function( e ){
             e.preventDefault();
             var tar = this,
@@ -530,11 +1462,30 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                 $.pub( 'wanswitch', [{index: switchto}] );
             }, 200);
         });
+        //运营商设置选择
+        $( document.body ).delegate( '.networkselect', 'change', function( e ){
+            e.preventDefault();
+            var tar = this,
+                $tar = $(tar),
+                switchto = $tar.val();
+               // getNetworkValue(switchto);
+            clearTimeout( timer );
+            setTimeout(function(){
+                $.pub( 'networkswitch', [{index: switchto}] );
+            }, 200);
+        });
 
         function wait(){
             dlgwait = $.loadingDialog({
                 title : '<%:联网方式设置%>',
                 content : '<%:联网方式设置中，请稍等...%>'
+            }).lock();
+        }
+
+        function wait_ipv6(){
+            dlgwait_ipv6 = $.loadingDialog({
+                title : '<%:IPv6网络方式设置%>',
+                content : '<%:IPv6网络方式设置中，请稍等...%>'
             }).lock();
         }
 
@@ -545,19 +1496,31 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
             var validator = Valid.checkAll( this );
             if ( validator ) {
                 wait();
-                var requestData = $( this ).serializeArray();
+                var requestData =$( this ).serializeArray();
+                requestData = requestData.filter(checkArrary)
+                if ( false ){
+                    if(!setVlan($("#networkselect0").val(),$("#vlanId0").val(),$("#valnPriorty0").val())){
+                        dlgwait.close();
+                        return
+                    }
+                }
+               
+                
                 $.ajax({
                     url: '<%=luci.dispatcher.build_url("api", "xqnetwork","set_wan")%>',
                     type: "POST",
                     data: requestData,
                     dataType: "json",
                     success : function( rsp ){
-                        if ( rsp.code === 0 ) {
-                            location.reload( true );
-                        } else {
-                            $.alert( rsp.msg );
-                        }
-                        dlgwait.close();
+                        setTimeout(function(){
+                            if ( rsp.code === 0 ) {
+                                location.reload( true );
+                            } else {
+                                $.alert( rsp.msg );
+                            } 
+                            dlgwait.close();
+                        },7000)
+                       
                     }
                 });
             }
@@ -570,18 +1533,29 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
             if ( validator ) {
                 wait();
                 var requestData = $( this ).serializeArray();
+                requestData = requestData.filter(checkArrary)
+                if ( false ){
+                    if(!setVlan($("#networkselect2").val(),$("#vlanId2").val(),$("#valnPriorty2").val())){
+                        dlgwait.close();
+                        return
+                    }
+                }
+                
+                
                 $.ajax({
                     url: '<%=luci.dispatcher.build_url("api", "xqnetwork","set_wan")%>',
                     type: "POST",
                     data: requestData,
                     dataType: "json",
                     success : function( rsp ){
-                        if( rsp.code === 0 ){
-                            location.reload( true );
-                        }else{
-                            $.alert( rsp.msg );
-                        }
-                        dlgwait.close();
+                        setTimeout(function(){
+                            if( rsp.code === 0 ){
+                                location.reload( true );
+                            }else{
+                                $.alert( rsp.msg );
+                            }
+                            dlgwait.close();
+                        },7000)
                     }
                 });
             }
@@ -595,25 +1569,105 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
             if ( validator ) {
                 wait();
                 var requestData = $( this ).serializeArray();
+                requestData = requestData.filter(checkArrary);
+                if ( false ){
+                    if(!setVlan($("#networkselect1").val(),$("#vlanId1").val(),$("#valnPriorty1").val())){
+                        dlgwait.close();
+                        return
+                    }
+                }
+                                   
                 $.ajax({
                     url: '<%=luci.dispatcher.build_url("api", "xqnetwork","set_wan")%>',
                     type: "POST",
                     data: requestData,
                     dataType: "json",
                     success : function( rsp ){
-                        if( rsp.code === 0 ){
-                            setTimeout(function(){
-                                dlgwait.close();
-                                location.reload( true );
-                            }, 2000);
-                        } else {
+                        setTimeout(function(){
+                            if( rsp.code === 0 ){  
+                                location.reload( true );               
+                            } else {                              
+                                $.alert( rsp.msg );
+                            }
                             dlgwait.close();
-                            $.alert( rsp.msg );
-                        }
+                        },7000)
+                        
                     }
                 });
             }
         } );
+
+
+        $( '#static-ipv6,#native,#nat' ).on( 'submit', function( e ){
+            e.preventDefault();
+            // var el = document.getElementById('mtu');
+            // var valid = Valid.checkAll( el);
+            // alert(valid);
+
+            var mtu = $('input[name=mtu]').val();
+            if(mtu > 1492 || mtu < 1280){
+                $.alert('<%:开启IPv6后，MTU取值范围为[1280-1492]，如需打开IPv6，请在上网设置中修改MTU值%>');
+                return;
+            }
+
+
+
+            var validator = Valid.checkAll( this );
+            if ( validator ) {
+                wait_ipv6();
+                clearInterval(timeInterval);
+
+                var requestData = $( this ).serializeArray();
+                $.ajax({
+                    url: '<%=luci.dispatcher.build_url("api", "xqnetwork","set_wan6")%>',
+                    type: "POST",
+                    data: requestData,
+                    dataType: "json",
+                    success : function( rsp ){               
+                        setTimeout(function(){
+                            $.pub( 'getwaninfo' );
+                            dlgwait_ipv6.close();
+                            $.alert('<%:设置成功%>');
+                        },3000);
+                        //hidden button
+                        $('#ipv6_set').find('form .btn-primary,form .btn-dft').addClass('hidden');
+                        ipv6_status_roll();
+
+                        // mtu
+                       
+                        $('input[name=mtu]').attr('minValue', 1280);
+                        
+                    },
+                    error:function (e){  
+                        $.alert('<%:设置失败%>');  
+                    } 
+
+                });
+            }
+        })
+
+
+        var timeInterval ;
+        // ipv6_status  interval 
+        function ipv6_status_roll(){
+            timeInterval = setInterval(function(){
+                $.ajax({
+                    url: '<%=luci.dispatcher.build_url("api", "xqnetwork","ipv6_status")%>',
+                    type: "GET",
+                    dataType: "json",
+                    success : function( rsp ){
+                        if( rsp.code === 0 ){ 
+                            // $.pub( 'getwaninfo' );
+                                
+                            $.pub( 'fillipv6list', [rsp] );
+                            // $.pub( 'fillipv6form', [rsp] );
+                        }
+                    }
+                });
+            },3000)
+            
+        }
+
 
         // stop connect
         $( document.body ).delegate( '#pppoeStop', 'click', function( e ){
@@ -641,6 +1695,26 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
             }
         });
 
+        // set ipv6 more option
+        $('.setipv6more').on('click', function( e ){
+            var tar = e.target,
+                $tar = $(tar),
+                isauto = $tar.val() === '0',
+                $moreset = $tar.parents('.item-more').next('.item-more-group');
+            if ( isauto ) {
+
+                $tar.parents('.form').find('input[name="dns1"]').val('');
+                $tar.parents('.form').find('input[name="dns1"]').val('');
+                // $('#native input[name="dns1"]').val('');
+                // $('#native input[name="dns2"]').val('');
+                $moreset.find('input,select').prop('disabled', true);
+                $moreset.find('.form-item').addClass('form-item-disabled');
+            } else {
+                $moreset.find('input,select').prop('disabled', false);
+                $moreset.find('.form-item').removeClass('form-item-disabled');
+            }
+        });
+
         // cancel set
         $('.btncancelset').on('click', function( e ){
             e.preventDefault();
@@ -649,6 +1723,7 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
 
         function onControlFocus() {
             $(this).parents('form').find('.btn-primary, .btn-dft').removeClass('hidden');
+            // $("#static-ipv6,#native,#nat").find('.btn-primary, .btn-dft').removeClass('hidden');
         }
 
         $('#wanspeed').delegate('input[type=text], input[type=checkbox], input[type=radio]', 'click', onControlFocus)
@@ -658,6 +1733,9 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
         $('#wanSet').delegate('select','change', function(){
            $('#wanSet').find('.btn-primary, .btn-dft').removeClass('hidden');
         });
+
+        $('#ipv6Set').delegate('input[type=text], input[type=radio], input[type=checkbox]', 'click', onControlFocus)
+                    .delegate('.ipt-text', 'click', onControlFocus);
         //问题排查
         $('#wanStatus').delegate('#showpppoeissue', 'click', function(e){
             e.preventDefault();
@@ -674,7 +1752,7 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                 width: 870
             });
         });
-    } );
+    // } );
 
     //PPPoE checkstatus
     $.sub('pppoeStatus', function(evt, data){
@@ -709,7 +1787,7 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                                 break;
                             case 3 :
                                 msg = rsp.msg || '<%:拨号失败%>';
-                                msg = msg + '<%:，正在尝试特殊拨号模式...%>';
+                                msg = msg + '<%:，正在尝试重新拨号...%>';
                                 timer = setTimeout(ask, 2000);
                                 break;
                             case 4 :
@@ -873,20 +1951,20 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
         $.selectBeautify({ container: '#wanspeed'});
     });
 
-    $.sub( 'mac:get', function(){
-        var requestURL = '<%=luci.dispatcher.build_url("api", "xqnetwork","wan_info")%>',
-            requestData = {};
-        $.getJSON( requestURL, requestData, function( rsp ){
-            if( rsp.code === 0 ){
-                var mac = rsp.info.mac;
-                if ( mac && mac != "" ){
-                    $( '#currMac' ).text( mac.toUpperCase() );
-                }
-            } else {
-                $( '#currMac' ).text( '<%:获取失败%>,' + rsp.msg );
-            }
-        });
-    } );
+    // $.sub( 'mac:get', function(){
+    //     var requestURL = '<%=luci.dispatcher.build_url("api", "xqnetwork","wan_info")%>',
+    //         requestData = {};
+    //     $.getJSON( requestURL, requestData, function( rsp ){
+    //         if( rsp.code === 0 ){
+    //             var mac = rsp.info.mac;
+    //             if ( mac && mac != "" ){
+    //                 $( '#currMac' ).text( mac.toUpperCase() );
+    //             }
+    //         } else {
+    //             $( '#currMac' ).text( '<%:获取失败%>,' + rsp.msg );
+    //         }
+    //     });
+    // } );
 
     $.sub( 'maccloneEvent', function(){
         // mac clone
@@ -940,12 +2018,135 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
         });
     } );
 
+    // 替换valnId 优先级为数字
+        $("#valnId").on('input',function(){
+            var temp=$(this).val().replace(/[^\d]/g,'');
+            $(this).val(temp);             
+        })
+
+        //获取vlan数据
+         function getValnInfo(){
+            var rspData='';
+            $.ajax({
+                url: '<%=luci.dispatcher.build_url("api", "misystem","get_iptv")%>',
+                type: "GET",
+                dataType: "json",
+                async:false,
+                success : function( rsp ){
+                if( rsp.code === 0 ){
+                      //  $.pub( 'fillipv6list', [rsp] );
+                    rspData = rsp;
+                    initNetworkIndex = rsp.internet_profile;
+                    initVlanInternetVid = rsp.internet_vid!=-1?rsp.internet_vid:' ';
+                    initVlanInternetPri = rsp.internet_priority!=-1?rsp.internet_priority:' ';
+                    //initNetworkIndex = 1;                   
+                    }
+                }
+
+
+            });
+             return rspData;
+            
+        }
+        //过滤元素
+        function checkArrary(data){
+
+            return (data.name != "networkselect" && data.name!= "vlanId0" && data.name!= "valnPriorty0")
+        }
+        //setvLAN
+        function setVlan(seclect,valn,vlanPriorty){
+            var opt = "set";
+            var result = true;       
+            // if(seclect == 0 || seclect == '0'){
+            //     opt = "clean"
+            // }else{
+            //     opt = "set"
+            // }
+            var sendData = {
+                "internet_vid":valn,
+                "internet_tag": 1,
+                "opt":opt,
+                "internet_priority":vlanPriorty,
+                "internet_profile":seclect
+
+
+            }
+            $.ajax({
+                url: '<%=luci.dispatcher.build_url("api", "misystem","set_iptv")%>',
+                type: "POST",
+                dataType: "json",
+                data: sendData,
+                async:false,
+                success : function( rsp ){
+                    if( rsp.code != 0 ){
+                        $.alert( rsp.msg );
+                        result = false          
+                    }else{
+                        result = true
+                    }
+                }
+
+
+            });
+            return result
+        }
+        //判断网络模式对应的优先级
+        function getNetworkValue(val,type){
+           // debugger
+           var value = JSON.parse(val)
+            switch (value){
+                case 1:               
+                $('input[name="vlanId'+ type+'"]').val('35');
+                $('input[name="valnPriorty'+ type+'"]').val('0');
+                //$("#valnId").val('100');
+                break;
+                case 2 :
+                $('input[name="vlanId'+ type+'"]').val('10');
+                $('input[name="valnPriorty'+ type+'"]').val('0');
+                break;
+                case 3:
+                $('input[name="vlanId'+ type+'"]').val('12');
+                $('input[name="valnPriorty'+ type+'"]').val('0'); 
+                break;
+                case 4:
+                $('input[name="vlanId'+ type+'"]').val('100');
+                $('input[name="valnPriorty'+ type+'"]').val('0'); 
+                break;
+                case 5:
+                $('input[name="vlanId'+ type+'"]').val('621');
+                $('input[name="valnPriorty'+ type+'"]').val('0'); 
+                break;
+                case 6:
+                $('input[name="vlanId'+ type+'"]').val('10');
+                $('input[name="valnPriorty'+ type+'"]').val('0'); 
+                break; 
+                case 7:
+                $('input[name="vlanId'+ type+'"]').val('35');
+                $('input[name="valnPriorty'+ type+'"]').val('0'); 
+                break; 
+                case 8:
+                $('input[name="vlanId'+ type+'"]').val('500');
+                $('input[name="valnPriorty'+ type+'"]').val('0'); 
+                break;
+                case 9:
+                $('input[name="vlanId'+ type+'"]').val('10');
+                $('input[name="valnPriorty'+ type+'"]').val('0'); 
+                break;
+                case 10:
+                $('input[name="vlanId'+ type+'"]').val('100');
+                $('input[name="valnPriorty'+ type+'"]').val('0'); 
+                break;
+                default:
+                $('input[name="vlanId'+ type+'"]').val(initVlanInternetVid);
+                $('input[name="valnPriorty'+ type+'"]').val(initVlanInternetPri);       
+            }
+        }
     $(function(){
-       // $.pub( 'getWanType' );
+        //$.pub( 'getWanType' );
         $.pub( 'getwaninfo' );
-        $.pub( 'addEvent' );
+        // $.pub( 'addEvent' );
         $.pub( 'wanspeedEvent');
-        $.pub( 'mac:get' );
+        // $.pub( 'mac:get' );
         $.pub( 'maccloneEvent' );
     });
 }());

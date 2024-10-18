@@ -28,6 +28,7 @@ require "miqos.rule_by_host"
 require "miqos.rule_by_prio"
 require "miqos.rule_by_service"
 require "miqos.rule_by_wangzhe"
+require "miqos.rule_by_noifb"
 
 local QOS_CMD
 
@@ -40,6 +41,8 @@ if #arg >= 1 then
         QOS_VER='CTF'
     elseif arg[1] == 'fix' then
         QOS_VER='FIX'
+    elseif arg[1] == 'noifb' then
+        QOS_VER='NOIFB'
     elseif arg[1] == 'hwqos' then
         QOS_VER='HWQOS'
     else
@@ -87,6 +90,13 @@ function fix_system_exit()
     os.exit(0)
 end
 
+function noifb_system_exit()
+    cleanup_system()
+    clean_sock()
+    logger(3,'======== Process Exit. =====')
+    os.exit(0)
+end
+
 -- 系统初始化
 local function system_init()
 
@@ -121,7 +131,7 @@ end
 
 g_ifb_status=''
 local function check_ifb_up()
-    if QOS_VER == 'HWQOS' then
+    if QOS_VER == 'HWQOS' or QOS_VER == 'NOIFB' then
         return true
     end
     -- 如果ifb状态未UP,则尝试UP
@@ -144,7 +154,7 @@ end
 -- 更新调用QoS
 local function update_qos_rules()
     local ret=false
-    if not check_ifb_up() then return false end
+    --if not check_ifb_up() then return false end
 
     -- 读取配置文件（TODO: 这里需要添加一个触发开关，只有通过命令行触发的配置改变才能激发重读qos config）
     if not read_qos_config() then
@@ -191,6 +201,26 @@ local function update_fix_qos_rules()
     return false
 end
 
+local function update_noifb_qos_rules()
+
+    if not read_qos_config() then
+        return false
+    end
+
+    if cfg.enabled.flag == '0' then    -- clean rule & exit if qos off
+        logger(3,'fix system exit ')
+        noifb_system_exit()
+    end
+
+    if qdisc[cur_qdisc] then
+        if qdisc[cur_qdisc].apply then
+            return qdisc[cur_qdisc].apply(nil,cfg.bands,cfg.DEVS,true,true)
+        end
+    else
+        logger(3, 'noifb-mode-qdisc not exist.')
+    end
+    return false
+end
 
 -- 读取uptime计数
 local function get_uptime()
@@ -306,7 +336,7 @@ function main_once()
     local res={result=0,data='ok'}
     cfg.DEVS={
             UP={dev=read_interfaces("wan"),id='2',},
-            DOWN={dev="ifb0",id='1',},
+            DOWN={dev="br-lan",id='1',},
         }
     if not QOS_CMD or not QOS_CMD[1] then
         update_fix_qos_rules()
@@ -324,6 +354,30 @@ function main_once()
 
 end
 
+function main_once_ifb()
+
+    cur_qdisc='noifb'
+
+    local res={result=0,data='ok'}
+    cfg.DEVS={
+            UP={dev=read_interfaces("wan"),id='2',},
+            DOWN={dev="br-lan",id='1',},
+        }
+    if not QOS_CMD or not QOS_CMD[1] then
+        update_noifb_qos_rules()
+    else
+        -- 命令行的处理
+        read_qos_config()
+        res,execflag = process_cmd(unpack(QOS_CMD))
+
+        if execflag then    -- 触发立即执行更新qos操作
+            update_noifb_qos_rules()
+        end
+    end
+
+    if g_debug then pr(res) end
+
+end
 
 --[[main]]-------------------
 local function main()
@@ -333,6 +387,9 @@ local function main()
         if QOS_VER == 'FIX' then
             -- logger(3, 'apply rule as FIX mode.')
             s, e = pcall(function() main_once() end)
+        elseif QOS_VER == 'NOIFB' then
+            -- logger(3, 'apply rule as NOIFB mode.')
+            s, e = pcall(function() main_once_ifb() end)
         else
             -- logger(3, 'apply rule as non-FIX mode.')
             s, e = pcall(function() main_loop() end)

@@ -5,11 +5,15 @@
 local ver = require("xiaoqiang.XQVersion").webVersion
 local uci = require("luci.model.uci").cursor()
 local hardwareModel = tostring(uci:get("misc", "hardware", "model"))
+local XQSysUtil = require "xiaoqiang.util.XQSysUtil"
+local hardware = string.lower( XQSysUtil.getHardware() )
+
 %>
 <%include("web/inc/head")%>
 <title><%:小米路由器%></title>
 <meta name="viewport" content="width=1200">
 <link href="<%=resource%>/web/css/bc.css?v=<%=ver%>" rel="stylesheet">
+<link href="<%=resource%>/web/css/layout.css?v=<%=ver%>" rel="stylesheet">
 <link href="<%=resource%>/web/css/vpn.css?v=<%=ver%>" rel="stylesheet">
 </head>
 <body>
@@ -76,6 +80,7 @@ local hardwareModel = tostring(uci:get("misc", "hardware", "model"))
                     <a href="#" id="autostart" class="btn-switch btn-switch-off"></a>
                 </div>
             </div>
+            <%if hardware ~= "d01" then%>
             <div class="hd">
                 <h3><%:智能VPN分流%></h3>
                 <div class="switch">
@@ -131,15 +136,8 @@ local hardwareModel = tostring(uci:get("misc", "hardware", "model"))
                     </div>
                 </div>
             </div>
-            <div class="hd">
-                <h3><%:小米服务走VPN%></h3>
-                <div class="switch">
-                    <a href="#" id="mivpnswitch" class="btn-switch btn-switch-off"></a>
-                </div>
-            </div>
-            <div class="bd">
-                <p><%:当你需要通过VPN使用外网时，可以开启此功能保证小米路由器APP远程服务可用，其他情况下关闭此功能%></p>
-            </div>
+
+             <%end%>
         </div>
     </div>
     <%include("web/inc/footer")%>
@@ -261,7 +259,7 @@ local hardwareModel = tostring(uci:get("misc", "hardware", "model"))
                         <th><%:设备名称%></th>
                         <th width="90"><%:状态%></th>
                         <th><%:MAC地址%></th>
-                        <th width="30"><%:操作%></th>
+                        <th width="60"><%:操作%></th>
                     </tr>
                 </thead>
                 <tbody id="dialogdeviceslist">
@@ -676,7 +674,7 @@ var modelVpn = (function(){
             var self = this;
             var open = $(this).hasClass('btn-switch-on') ? 0 : 1;
             if( open == 1 ){
-                $.confirm('<%:重新连接vpn后该设置将生效，同时"小米服务走vpn功能"将关闭%>', function(){
+                $.confirm('<%:重新连接vpn后该设置将生效，是否确认重新连接？%>', function(){
                     checkConnected(function(){
                         // var enable = $(self).hasClass('btn-switch-on') ? 0 : 1;
                         var mode = $('#smartvpnmode li.active').attr('data-mode');
@@ -963,7 +961,7 @@ var modelVpn = (function(){
                 title: '<%:请选择需要使用VPN的设备%>',
                 content: $('#tmplAddList').html(),
                 lock: true,
-                width: 600,
+                width: 700,
                 initialize: function(){
                     addSmartvpnByDeviceList();
                 }
@@ -974,7 +972,7 @@ var modelVpn = (function(){
                 title: '<%:通过MAC地址添加要使用VPN的设备%>',
                 content: $('#tmplAddmac').html(),
                 lock: true,
-                width: 390,
+                width: 590,
                 initialize: function(){
                     addSmartvpnByMac();
                 }

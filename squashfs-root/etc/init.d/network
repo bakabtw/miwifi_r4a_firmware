@@ -3,139 +3,155 @@
 START=20
 STOP=90
 
-#SERVICE_DAEMONIZE=1
-#SERVICE_WRITE_PID=1
+USE_PROCD=1
 
-CMD="/sbin/netifd"
+init_switch() {
+	setup_switch() { return 0; }
 
-fix_apmode_network_config() {
-    ap_mode=$(uci -q get xiaoqiang.common.NETMODE)
-    [ "$ap_mode" != "lanapmode" ] && return 0
-
-    config_load misc
-    config_get cmd_ifname_2G wireless ifname_2G &>/dev/null
-    config_get cmd_ifname_5G wireless ifname_5G &>/dev/null
-
-    lan_device=$(uci -q get backup.lan.ifname)
-    [ "$lan_device" == "" ] && lan_device="eth0"
-
-    ap_mode_act=$(uci -q get misc.switchop.bridgeap_open)
-    [ "$ap_mode_act" == "bridgeap_open_r1cm_elink" ] && {
-        uci -q set network.lan.ifname="$lan_device $cmd_ifname_2G $cmd_ifname_5G"
-        uci commit network
-    }
+	include /lib/network
+	setup_switch
 }
 
-bridgeap_check_gw_start() {
-    ap_mode=$(uci -q get xiaoqiang.common.NETMODE)
-    [ "$ap_mode" != "lanapmode" ] && return 0
-    grep -v "/usr/sbin/ap_mode.sh check_gw" /etc/crontabs/root >/etc/crontabs/root.new
-    echo "*/1 * * * * /usr/sbin/ap_mode.sh check_gw" >>/etc/crontabs/root.new
-    mv /etc/crontabs/root.new /etc/crontabs/root
-    /etc/init.d/cron restart
+start_service() {
+	#update ip account switch
+	[ -f /proc/sys/net/ipv4/ipaccount/enable_ipaccount ] && {
+		ap_mode=$(uci -q get xiaoqiang.common.NETMODE)
+		if [ "$ap_mode" = "lanapmode" -o "$ap_mode" = "wifiapmode" -o "$ap_mode" = "whc_re" ]; then
+			echo 0 > /proc/sys/net/ipv4/ipaccount/enable_ipaccount
+		else
+			echo 1 > /proc/sys/net/ipv4/ipaccount/enable_ipaccount
+		fi
+	}
+
+	procd_open_instance
+	procd_set_param command /sbin/netifd
+	procd_set_param respawn
+	procd_set_param watch network.interface
+	[ -e /proc/sys/kernel/core_pattern ] && {
+		procd_set_param limits core="unlimited"
+	}
+	procd_close_instance
 }
 
-add_openvpn_interface() {
-    local openvpn_network=$(uci -q get network.openvpn)
-    [ "openvpn_network" != "interface" ] && {
-        uci -q batch <<EOF
-        set network.openvpn=interface
-        set network.openvpn.ifname=tun0
-        set network.openvpn.proto=openvpn
-        commit network
-EOF
+reload_service() {
+	local rv=0
 
-    }
+	init_switch
+	ubus call network reload || rv=1
+	/sbin/wifi reload_legacy
+	return $rv
 }
 
-# longloopd must be shutdown prior to interface change
-stop_longloop() {
-    [ -x /usr/bin/longloopd ] && /usr/bin/longloopd stop
+stop_service() {
+	/sbin/wifi down
+	ifdown -a
+	sleep 1
 }
 
-start() {
-    stop
-    add_openvpn_interface
-    bridgeap_check_gw_start
-    # ensure netifd alive during OOM
-    echo '-1000' >/proc/$$/oom_score_adj
-    export PROCLINE="$CMD"
-    export PROCFLAG="$CMD"
-    /usr/sbin/supervisord start
-    export PROCLINE=""
-    export PROCFLAG=""
-    # wait for netifd start up
-    ubus -t 30 wait_for network.interface
-    setup_switch() { return 0; }
-
-    include /lib/network
-
-    {
-        /sbin/wifi down >/dev/null 2>&1
-        /sbin/wifi up
-    }
-
-    logger -t network -p9 "try to setup_switch and restart interfaces."
-    setup_switch
-
-    #for mt7621, seperate 16Queues into 2GMAC-scheduler to enable 1G+1G rate in HWNAT
-    [ -f /usr/bin/qdma ] && {
-        for i in $(seq 14 1 15); do
-            qdma sch $i 1
-        done
-    } || :
-
-    #update ip account switch
-    [ -f /proc/sys/net/ipv4/ipaccount/enable_ipaccount ] && {
-        ap_mode=$(uci -q get xiaoqiang.common.NETMODE)
-        if [ "$ap_mode" = "lanapmode" -o "$ap_mode" = "wifiapmode" -o "$ap_mode" = "whc_re" ]; then
-            echo 0 > /proc/sys/net/ipv4/ipaccount/enable_ipaccount
-        else
-            echo 1 > /proc/sys/net/ipv4/ipaccount/enable_ipaccount
-        fi
-    }
-
-    return 0 # always return ok
-
+service_running() {
+	ubus -t 30 wait_for network.interface
+	flock -u 1000
+	/sbin/wifi reload_legacy
+	init_switch
 }
 
-restart() {
-    stop_longloop
+validate_atm_bridge_section()
+{
+	uci_validate_section network "atm-bridge" "${1}" \
+		'unit:uinteger:0' \
+		'vci:range(32, 65535):35' \
+		'vpi:range(0, 255):8' \
+		'atmdev:uinteger:0' \
+		'encaps:or("llc", "vc"):llc' \
+		'payload:or("bridged", "routed"):bridged'
+}
 
-    ifdown -a
-    sleep 1
-    start
+validate_route_section()
+{
+	uci_validate_section network route "${1}" \
+		'interface:string' \
+		'target:cidr4' \
+		'netmask:netmask4' \
+		'gateway:ip4addr' \
+		'metric:uinteger' \
+		'mtu:uinteger' \
+		'table:or(range(0,65535),string)'
+}
+
+validate_route6_section()
+{
+	uci_validate_section network route6 "${1}" \
+		'interface:string' \
+		'target:cidr6' \
+		'gateway:ip6addr' \
+		'metric:uinteger' \
+		'mtu:uinteger' \
+		'table:or(range(0,65535),string)'
+}
+
+validate_rule_section()
+{
+	uci_validate_section network rule "${1}" \
+		'in:string' \
+		'out:string' \
+		'src:cidr4' \
+		'dest:cidr4' \
+		'tos:range(0,31)' \
+		'mark:string' \
+		'invert:bool' \
+		'lookup:or(range(0,65535),string)' \
+		'goto:range(0,65535)' \
+		'action:or("prohibit", "unreachable", "blackhole", "throw")'
+}
+
+validate_rule6_section()
+{
+	uci_validate_section network rule6 "${1}" \
+		'in:string' \
+		'out:string' \
+		'src:cidr6' \
+		'dest:cidr6' \
+		'tos:range(0,31)' \
+		'mark:string' \
+		'invert:bool' \
+		'lookup:or(range(0,65535),string)' \
+		'goto:range(0,65535)' \
+		'action:or("prohibit", "unreachable", "blackhole", "throw")'
+}
+
+validate_switch_section()
+{
+	uci_validate_section network switch "${1}" \
+		'name:string' \
+		'enable:bool' \
+		'enable_vlan:bool' \
+		'reset:bool'
+}
+
+validate_switch_vlan()
+{
+	uci_validate_section network switch_vlan "${1}" \
+		'device:string' \
+		'vlan:uinteger' \
+		'ports:list(ports)'
+}
+
+service_triggers()
+{
+	procd_add_reload_trigger network wireless
+
+	procd_open_validate
+	validate_atm_bridge_section
+	validate_route_section
+	[ -e /proc/sys/net/ipv6 ] && validate_route6_section
+	validate_rule_section
+	[ -e /proc/sys/net/ipv6 ] && validate_rule6_section
+	validate_switch_section
+	validate_switch_vlan
+	procd_close_validate
 }
 
 shutdown() {
-    stop_longloop
-    ifdown wan
-    # sleep to let PPPoE clean up its sesssion.
-    for i in $(seq 1 10); do
-        pidof pppd >/dev/null || break
-        sleep 1
-    done
-    wifi down
-    ifdown -a
-    stop
-}
-
-stop() {
-    # remove openvpn
-    uci -q delete network.openvpn
-    uci commit network
-
-    fix_apmode_network_config
-    stop_longloop
-    export PROCLINE="$CMD"
-    export PROCFLAG="$CMD"
-    /usr/sbin/supervisord stop
-    export PROCLINE=""
-    export PROCFLAG=""
-}
-
-reload() {
-    ubus call network reload
-    /sbin/wifi down
-    /sbin/wifi up
+	ifdown -a
+	sleep 1
 }

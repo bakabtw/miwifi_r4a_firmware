@@ -7,5 +7,3 @@ restore_defaults
 SN
 model
 ssh_en
-boot_reason
-reboot_reason

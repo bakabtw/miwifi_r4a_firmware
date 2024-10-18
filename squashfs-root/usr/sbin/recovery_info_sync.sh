@@ -1,7 +1,7 @@
 #!/bin/sh
 # Copyright (C) 2015 Xiaomi
 
-REQUEST_URL="http://eu.api.miwifi.com/report_recovery?"
+REQUEST_URL="http://api.miwifi.com/report_recovery?"
 
 sync_work_mode()
 {

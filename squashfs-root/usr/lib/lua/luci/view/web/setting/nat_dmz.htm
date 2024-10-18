@@ -10,7 +10,9 @@ local ip = XQLanWanUtil.getLanWanInfo("lan")["ipv4"][1]["ip"]
 <title><%:小米路由器%></title>
 <meta name="viewport" content="width=1200">
 <link href="<%=resource%>/web/css/bc.css?v=<%=ver%>" rel="stylesheet">
+<link href="<%=resource%>/web/css/layout.css?v=<%=ver%>" rel="stylesheet">
 <link href="<%=resource%>/web/css/nat.css?v=<%=ver%>" rel="stylesheet">
+<link href="<%=resource%>/web/css/layout.css?v=<%=ver%>" rel="stylesheet">
 <link href="<%=resource%>/web/css/dmz.css?v=<%=ver%>" rel="stylesheet">
 </head>
 <body>
@@ -217,7 +219,7 @@ local ip = XQLanWanUtil.getLanWanInfo("lan")["ipv4"][1]["ip"]
         <td>{$arr[i].destport}</td>
      <!--   <td><%:未生效%></td> -->
         <td class="center">
-            <a class="btn btn-dft delPort" href="javascript:;" data-port="{$arr[i].srcport}"><span><%:删除%></span></a>
+            <a class="btn btn-dft delPort" href="javascript:;" data-port="{$arr[i].srcport}" data-proto="{$arr[i].proto}"><span><%:删除%></span></a>
         </td>
     </tr>
 {/for}
@@ -279,7 +281,7 @@ local ip = XQLanWanUtil.getLanWanInfo("lan")["ipv4"][1]["ip"]
         <td>{$arr[i].destip}</td>
         <!-- <td><%:未生效%></td> -->
         <td class="center">
-            <a class="btn btn-dft delRange" href="javascript:;" data-port="{$arr[i].srcport.f}"><span><%:删除%></span></a>
+            <a class="btn btn-dft delRange" href="javascript:;" data-port="{$arr[i].srcport.f}" data-proto="{$arr[i].proto}"><span><%:删除%></span></a>
         </td>
     </tr>
 {/for}
@@ -373,13 +375,14 @@ var modelNat = (function(){
             $('#natlist_port').on('click', '.delPort', function(e) {
                 e.preventDefault();
                 var port = $(this).data('port');
+                var proto = $(this).data('proto');
                 var dlg = window.art.dialog({
                     title: '<%:端口转发%>',
                     content: '<%:确定要删除这条规则吗？%>',
                     lock: true,
                     fixed: true,
                     ok: function() {
-                        modelNat.delPort(port);
+                        modelNat.delPort(port, proto);
                     },
                     cancel: function() {}
                 })
@@ -467,6 +470,7 @@ var modelNat = (function(){
             $('#natlist_range').on('click', '.delRange', function(e) {
                 e.preventDefault();
                 var port = $(this).data('port');
+                var proto = $(this).data('proto');
 
                 var dlg = window.art.dialog({
                     title: '<%:端口转发%>',
@@ -474,7 +478,7 @@ var modelNat = (function(){
                     lock: true,
                     fixed: true,
                     ok: function() {
-                        modelNat.delRange(port);
+                        modelNat.delRange(port, proto);
                     },
                     cancel: function() {}
                 })
@@ -588,8 +592,8 @@ var modelNat = (function(){
                 }
             }, 'json');
         },
-        delPort: function(port) {
-            $.post(modelNat.url.delRedirect, 'port=' + port, function(rsp) {
+        delPort: function(port, proto) {
+            $.post(modelNat.url.delRedirect, {port: port, proto: proto}, function(rsp) {
                 if (rsp.code === 0) {
                     modelNat.getRedirectPort();
                 } else {
@@ -603,8 +607,8 @@ var modelNat = (function(){
                 }
             }, 'json');
         },
-        delRange: function(port) {
-            $.post(modelNat.url.delRedirect, 'port=' + port, function(rsp) {
+        delRange: function(port, proto) {
+            $.post(modelNat.url.delRedirect, {port: port, proto: proto}, function(rsp) {
                 if (rsp.code === 0) {
                     modelNat.getRedirectRange();
                 } else {

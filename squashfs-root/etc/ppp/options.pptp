@@ -1,3 +1,6 @@
+#debug
+logfile /tmp/ppp/pptp.log
+
 noipdefault
 noauth
 nobsdcomp

@@ -1,0 +1,11 @@
+/usr/share/fw3/helpers.conf
+/lib/firewall.sysapi.loader
+/etc/init.d/firewall
+/lib/config_post_ota/firewall_cfg_update.lua
+/etc/security/limits.conf
+/etc/firewall.d/raw_notrack
+/sbin/fw3
+/etc/config/firewall
+/etc/firewall.user
+/etc/config/firewall_default
+/etc/hotplug.d/iface/20-firewall

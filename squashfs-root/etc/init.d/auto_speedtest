@@ -1,6 +1,6 @@
 #!/bin/sh /etc/rc.common
 
-START=99
+#START=99
 
 EXTRA_COMMANDS=" on off wan_up status next_time start stop set_userband debug_on debug_off do_speedtest"
 EXTRA_HELP="
@@ -17,7 +17,7 @@ EXTRA_HELP="
             do_speedtest                                    Do speed test immediately
             -------------------------------------------------"
 
-VERSION="OVERSEA"
+VERSION="__UNDEFINED__"
 
 if [ "$VERSION" == "OVERSEA" ]; then
     EXECMD="/usr/sbin/auto_speedtestd oversea"
@@ -45,49 +45,32 @@ start() {
         echo "ab config enabled not setted, exit!"
         return 0
     fi
-    #/usr/sbin/supervisord start
-    /usr/sbin/auto_speedtestd oversea &
+
     return 0
 }
 
 restart(){
-    stop &>/dev/null
-    start &>/dev/null
-    return $?
+
     return 0
 }
 
 on(){
-    uci set ab.settings.enabled=1
-    uci commit ab
 
     start
 }
 
 stop(){
-#    running
-#    if [ $? == 1 ]; then
-#        echo "auto speed service is not running. just exit."
-#        return 0
-#    fi
 
-#    $EXECMD_C stop
-    #/usr/sbin/supervisord stop
     return 0
 }
 
 off(){
-    stop
-    uci set ab.settings.enabled=0
-    uci commit ab
+
     return 0
 }
 
 running(){
-    /usr/sbin/supervisord status
-    if [ $? == 1 ]; then
-        return 1
-    fi
+
     return 0
 }
 

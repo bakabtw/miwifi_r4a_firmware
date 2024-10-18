@@ -32,7 +32,7 @@ function miscpred()
 end
 
 function log(...)
-    posix.openlog("predownload-ota", "np", LOG_USER)
+    posix.openlog("predownload-ota", LOG_NDELAY, LOG_USER)
     for i, v in ipairs({...}) do
         posix.syslog(4, util.serialize_data(v))
     end

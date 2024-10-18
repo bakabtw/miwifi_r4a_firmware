@@ -438,6 +438,16 @@ turbo_doit() {
 
 }
 
+ipv6_masq_doit() {
+    ip6_mode=$(uci -q get ipv6.settings.mode)
+    ip6_on=$(uci -q get ipv6.settings.enabled)
+    ip6tables -t nat -D POSTROUTING -j MASQUERADE >/dev/null 2>&1
+    if [ "$ip6_on" = "1" -a "$ip6_mode" = "nat" ]; then
+        ip6tables -t nat -A POSTROUTING -j MASQUERADE >/dev/null 2>&1
+    fi
+    return 0
+}
+
 modules_doit(){
 
 	case "$ctlop" in
@@ -486,8 +496,11 @@ modules_doit(){
 	dmz_bypass_ctf)
 		lua /usr/sbin/dmz_bypass_ctf
 		;;
-	turbo)
-		turbo_doit
+	#turbo)
+	#	turbo_doit
+	#	;;
+	ipv6_masq)
+        ipv6_masq_doit
 		;;
 	*)
 		echo "not support $ctlop"

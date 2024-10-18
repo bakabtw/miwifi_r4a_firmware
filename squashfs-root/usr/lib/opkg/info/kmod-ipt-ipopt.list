@@ -1,0 +1,11 @@
+/lib/modules/4.4.198.mt7621/xt_CLASSIFY.ko
+/lib/modules/4.4.198.mt7621/xt_tcpmss.ko
+/lib/modules/4.4.198.mt7621/xt_ecn.ko
+/lib/modules/4.4.198.mt7621/xt_length.ko
+/lib/modules/4.4.198.mt7621/xt_DSCP.ko
+/lib/modules/4.4.198.mt7621/ipt_ECN.ko
+/lib/modules/4.4.198.mt7621/xt_dscp.ko
+/etc/modules.d/ipt-ipopt
+/lib/modules/4.4.198.mt7621/xt_HL.ko
+/lib/modules/4.4.198.mt7621/xt_statistic.ko
+/lib/modules/4.4.198.mt7621/xt_hl.ko

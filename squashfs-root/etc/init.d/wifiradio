@@ -13,11 +13,11 @@ start() {
 
         wl0_radio_sw=`nvram get wl0_radio`
         if [ "$wl0_radio_sw" = "0" ]; then
-		uci set wireless.mt7612.disabled=1
+		uci set wireless.mt7663.disabled=1
 		uci commit wireless
         fi
         if [ "$wl0_radio_sw" = "1" ]; then
-		uci set wireless.mt7612.disabled=0
+		uci set wireless.mt7663.disabled=0
 		uci commit wireless
         fi
 

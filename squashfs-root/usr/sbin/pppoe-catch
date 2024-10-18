@@ -2,7 +2,7 @@
 
 SERVER_NAME_FILE='/tmp/state/pppoe-service-name'
 PAP_FILE='/tmp/state/pppoe-server-pap'
-
+pppoecatchlock="/var/run/pppoecatch.lock"
 
 usage () {
     echo "A helper script using dummy PPPoE server to find out client's dial-up config"
@@ -13,6 +13,22 @@ usage () {
     exit 1
 }
 
+_locked="0"
+################### lock ###################
+pppoecatch_trylock()
+{
+    trap "lock -u $pppoecatchlock; exit 1" SIGHUP SIGINT SIGTERM
+    lock -n $pppoecatchlock
+    [ $? == 1 ] && _locked="1"
+    return $?
+}
+
+pppoecatch_unlock()
+{
+    lock -u $pppoecatchlock
+}
+
+################### dnsd ###################
 
 cleanup() {
     rm -f $SERVER_NAME_FILE
@@ -28,13 +44,21 @@ wait_timeout() {
 	if [ -f $PAP_FILE ]; then
 	    break
 	else
+	    hardware=$(uci -q get misc.hardware.model)
+	    if [ "$hardware" == "R4CM" ]; then
+                lan_up=$(/sbin/ethstatus |grep -e 2 -e 4 | grep up |wc -l)
+                if [ "$lan_up" == "0" ]; then
+	            break
+                fi
+	    fi
 	    sleep 1
 	fi
 	let timeout=timeout-1
     done
 }
-
 start_pppoe() {
+    pppoecatch_trylock
+    [ "$_locked" == "1" ] && return;
     cleanup
     _ifname=$(uci -q get network.wan.ifname)
     _ifname=${_ifname:-eth0.2}
@@ -44,6 +68,7 @@ start_pppoe() {
     sleep 1
     killall -9 pppoe-server &> /dev/null
     [ -f $SERVER_NAME_FILE ] && echo "Service-Name: $(cat $SERVER_NAME_FILE)"
+    pppoecatch_unlock
     if [ -f $PAP_FILE ]; then
         echo "PPPoE:"
 	echo "$(cat $PAP_FILE)"

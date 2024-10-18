@@ -1,0 +1,8 @@
+Package: mt7603e-scripts
+Version: 4.1.2.3
+Depends: libc, mtk-base-files
+Source: package/mtk/drivers/mt7603e
+Section: opt
+Architecture: mipsel_24kc
+Installed-Size: 2667
+Description:  mt7603e scripts

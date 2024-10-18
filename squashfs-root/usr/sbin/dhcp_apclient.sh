@@ -57,7 +57,9 @@ start_dhcp () {
     abspath=`pwd`
     cd - >/dev/null
     ifname="$1"
-    udhcpc -q -s $abspath/`basename $0` -t 3 -T 2 -i "$ifname" -H "$hostname" >/dev/null 2>&1
+    wan_mac=$(getmac wan)
+    client_id="01:$wan_mac"
+    udhcpc -q -s $abspath/`basename $0` -t 3 -T 2 -i "$ifname" -H "$hostname" -x 0x3d:$client_id >/dev/null 2>&1
     exit $?
 }
 

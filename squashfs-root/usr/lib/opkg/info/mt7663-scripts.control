@@ -1,0 +1,8 @@
+Package: mt7663-scripts
+Version: gerrit
+Depends: libc, mtk-base-files
+Source: package/mtk/drivers/mt7663
+Section: opt
+Architecture: mipsel_24kc
+Installed-Size: 12344
+Description:  mt7663 scripts

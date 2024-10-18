@@ -35,8 +35,8 @@ NUM_OF_CPU=0; for i in $LIST; do NUM_OF_CPU=`expr $NUM_OF_CPU + 1`; done;
 #        echo "Wi-Fi(2): 2.4G"
 #fi
 
-wifiDomain1=`uci get wireless.@wifi-device[0].band`
-wifiDomain2=`uci get wireless.@wifi-device[1].band`
+wifiDomain1=`uci get wireless.@wifi-device[0].hwband`
+wifiDomain2=`uci get wireless.@wifi-device[1].hwband`
 
 case `cat /proc/cpuinfo | grep MT76` in
   *7621*)
@@ -59,42 +59,57 @@ if [ $OPTIMIZED_FOR == "wifi" ]; then
     if [ $NUM_OF_CPU == "4" ]; then
 
         if [ "$CONFIG_RALINK_MT7621" = "y" ]; then
-            echo 2 > /proc/irq/3/smp_affinity  #GMAC
-            echo 4 > /proc/irq/4/smp_affinity  #PCIe0
-            echo 8 > /proc/irq/24/smp_affinity #PCIe1
-            echo 8 > /proc/irq/25/smp_affinity #PCIe2
-            echo 8 > /proc/irq/19/smp_affinity #VPN
-            echo 8 > /proc/irq/20/smp_affinity #SDXC
-            echo 8 > /proc/irq/22/smp_affinity #USB
+#            echo 2 > /proc/irq/3/smp_affinity  #GMAC
+#            echo 4 > /proc/irq/4/smp_affinity  #PCIe0
+#            echo 8 > /proc/irq/24/smp_affinity #PCIe1
+#            echo 8 > /proc/irq/25/smp_affinity #PCIe2
+#            echo 8 > /proc/irq/19/smp_affinity #VPN
+#            echo 8 > /proc/irq/20/smp_affinity #SDXC
+#            echo 8 > /proc/irq/22/smp_affinity #USB
 
-            echo 3 > /sys/class/net/wl1/queues/rx-0/rps_cpus # WiFi 2.4G
-            echo 2 > /sys/class/net/wl0/queues/rx-0/rps_cpus # WiFi 5G
+#            echo 3 > /sys/class/net/wl1/queues/rx-0/rps_cpus # WiFi 2.4G
+#            echo 2 > /sys/class/net/wl0/queues/rx-0/rps_cpus # WiFi 5G
+#            echo 3 > /sys/class/net/apcli0/queues/rx-0/rps_cpus
+#            echo 3 > /sys/class/net/apclii0/queues/rx-0/rps_cpus
+#            echo 3 > /sys/class/net/wds0/queues/rx-0/rps_cpus
+#            echo 3 > /sys/class/net/wds1/queues/rx-0/rps_cpus
+#            echo 3 > /sys/class/net/wds2/queues/rx-0/rps_cpus
+#            echo 3 > /sys/class/net/wds3/queues/rx-0/rps_cpus
+#            echo 3 > /sys/class/net/wdsi0/queues/rx-0/rps_cpus
+#            echo 3 > /sys/class/net/wdsi1/queues/rx-0/rps_cpus
+#            echo 3 > /sys/class/net/wdsi2/queues/rx-0/rps_cpus
+#            echo 3 > /sys/class/net/wdsi3/queues/rx-0/rps_cpus
+
+#            if [ "$wifiDomain1" == "$wifiDomain2" ]; then
+#                echo d > /sys/class/net/eth0/queues/rx-0/rps_cpus
+#                echo d > /sys/class/net/eth1/queues/rx-0/rps_cpus
+#                echo "eth0 RPS: CPU0/2/3"
+#            else
+#                if [ "$wifiDomain1" == "2_4G" ]; then
+#                    echo 9 > /sys/class/net/eth0/queues/rx-0/rps_cpus
+#                    echo 9 > /sys/class/net/eth1/queues/rx-0/rps_cpus
+#                    echo "eth0 RPS: CPU0/3"
+#                else
+#                    echo 5 > /sys/class/net/eth0/queues/rx-0/rps_cpus # Wired LAN
+#                    echo 5 > /sys/class/net/eth1/queues/rx-0/rps_cpus # WAN
+#                    echo "eth0 RPS: CPU0/CPU2"
+#                fi
+#            fi
+
+            echo 5 > /sys/class/net/eth0/queues/rx-0/rps_cpus
+            echo 5 > /sys/class/net/eth1/queues/rx-0/rps_cpus
+            echo 3 > /sys/class/net/wl1/queues/rx-0/rps_cpus
+            echo 3 > /sys/class/net/wl0/queues/rx-0/rps_cpus
             echo 3 > /sys/class/net/apcli0/queues/rx-0/rps_cpus
             echo 3 > /sys/class/net/apclii0/queues/rx-0/rps_cpus
-            echo 3 > /sys/class/net/wds0/queues/rx-0/rps_cpus
-            echo 3 > /sys/class/net/wds1/queues/rx-0/rps_cpus
-            echo 3 > /sys/class/net/wds2/queues/rx-0/rps_cpus
-            echo 3 > /sys/class/net/wds3/queues/rx-0/rps_cpus
-            echo 3 > /sys/class/net/wdsi0/queues/rx-0/rps_cpus
-            echo 3 > /sys/class/net/wdsi1/queues/rx-0/rps_cpus
-            echo 3 > /sys/class/net/wdsi2/queues/rx-0/rps_cpus
-            echo 3 > /sys/class/net/wdsi3/queues/rx-0/rps_cpus
+            echo 0 > /sys/class/net/wdsi0/queues/rx-0/rps_cpus
+            echo 0 > /sys/class/net/wdsi1/queues/rx-0/rps_cpus
+            echo 0 > /sys/class/net/wdsi2/queues/rx-0/rps_cpus
+            echo 0 > /sys/class/net/wdsi3/queues/rx-0/rps_cpus
+            echo 2 > /proc/irq/10/smp_affinity
+            echo 4 > /proc/irq/31/smp_affinity
+            echo 8 > /proc/irq/11/smp_affinity
 
-            if [ "$wifiDomain1" == "$wifiDomain2" ]; then
-                echo d > /sys/class/net/eth0/queues/rx-0/rps_cpus
-                echo d > /sys/class/net/eth1/queues/rx-0/rps_cpus
-                echo "eth0 RPS: CPU0/2/3"
-            else
-                if [ "$wifiDomain1" == "5G" ]; then
-                    echo 9 > /sys/class/net/eth0/queues/rx-0/rps_cpus
-                    echo 9 > /sys/class/net/eth1/queues/rx-0/rps_cpus
-                    echo "eth0 RPS: CPU0/3"
-                else
-                    echo 5 > /sys/class/net/eth0/queues/rx-0/rps_cpus # Wired LAN
-                    echo 5 > /sys/class/net/eth1/queues/rx-0/rps_cpus # WAN
-                    echo "eth0 RPS: CPU0/CPU2"
-                fi
-            fi
         elif [ "$CONFIG_ARCH_MT7623" = "y" ]; then
             echo 2 > /proc/irq/232/smp_affinity    #GMAC
             echo 1 > /proc/irq/231/smp_affinity     #GMAC

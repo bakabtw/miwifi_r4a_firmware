@@ -1,6 +1,6 @@
 #!/usr/bin/lua
 local bit=  require "bit"
-local px =  require "Posix"
+local px =  require "posix"
 local uci=  require 'uci'
 local io=   require 'io'
 local socket= require 'socket'
@@ -9,7 +9,7 @@ local json= require 'json'
 local cfg_host='127.0.0.1'
 local cfg_port='1036'
 
-px.openlog("speedtest","np",LOG_USER)
+px.openlog("speedtest",LOG_NDELAY,LOG_USER)
 
 function logger(loglevel,msg)
     px.syslog(loglevel,msg)

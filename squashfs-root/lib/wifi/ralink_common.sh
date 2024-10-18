@@ -1,4 +1,4 @@
-# this file will be included in
+# this file will be included in 
 # 	/lib/wifi/mt{chipname}.sh
 
 sync_uci_with_dat() {
@@ -14,82 +14,38 @@ sync_uci_with_dat() {
 	echo "sync_uci_with_dat($1,$2,$3,$4)" >> $logfile
 
 	CountryCode=`nvram get CountryCode`
-	if [ -z $CountryCode ]; then
-		CountryCode="EU"
-	fi
 
-	case "$CountryCode" in
-	# 比利时|德国|丹麦|西班牙|芬兰|法国|爱尔兰|意大利|荷兰|波兰|瑞典|葡萄牙|罗马尼亚|保加利亚|匈牙利|马耳他|斯洛伐克|拉脱维亚|爱沙尼亚|克罗地亚|立陶宛|希腊|捷克
-		BE | DE | DK | ES | FI | FR | IE | IT | NL | PL | SE | PT | RO | BG | HU | MT | SK | LV | EE | HR | LT | GR | CZ )
-			CountryCode="EU"
-			uci set wireless.$device.ed_chk=1
-			uci set wireless.$device.aregion=6
-			;;
-		#欧盟|瑞士|挪威|英国|俄罗斯
-		EU | CH | NO | GB | RU )
-			uci set wireless.$device.ed_chk=1
-			uci set wireless.$device.aregion=6
-			;;
-		#乌克兰
-		UA )
-			uci set wireless.$device.ed_chk=1
-			uci set wireless.$device.aregion=10
-			;;
-	#墨西哥|巴西|智利|秘鲁|新加坡|马来西亚|澳大利亚|新西兰|泰国|越南|韩国|印尼|约旦|哥伦比亚
-		MX | BR | CL | PE | SG | MY | AU | NZ | TH | VN | KR | ID | JO | CO )
-			uci set wireless.$device.ed_chk=0
-			uci set wireless.$device.aregion=10
-			;;
-		#肯尼亚
-		KE )
-			uci set wireless.$device.ed_chk=0
-			uci set wireless.$device.aregion=24
-			;;
-		#尼日利亚
-		NG )
-			uci set wireless.$device.ed_chk=0
-			uci set wireless.$device.aregion=4
-			;;
-		#阿联酋|老挝|柬埔寨|埃及|摩洛哥|土耳其|以色列|others
-		AE | LA | KH | EG | MA | TR | IL | * )
-			uci set wireless.$device.ed_chk=0
-			uci set wireless.$device.aregion=6
-			;;
-	esac
-	uci set wireless.$device.country=$CountryCode
-	uci commit wireless
+	if [ $CountryCode ]; then
+                uci set wireless.$device.country=$CountryCode
+                uci commit wireless
+        else
+                uci set wireless.$device.country=CN
+                uci commit wireless
+        fi
 
-:<<!
-	if [  "$CountryCode" = "TW" ]; then
-		uci set wireless.$device.country=TW
-		uci set wireless.$device.rdregion=FCC
-		uci set wireless.$device.region=0
-		uci set wireless.$device.aregion=9
-		uci commit wireless
-	elif [  "$CountryCode" = "HK" ]; then
-		uci set wireless.$device.country=HK
-		uci set wireless.$device.region=1
-		uci set wireless.$device.aregion=0
-		uci commit wireless
-	elif [  "$CountryCode" = "US" ]; then
-		uci set wireless.$device.country=US
-		uci set wireless.$device.region=0
-		uci set wireless.$device.aregion=9
-		uci commit wireless
-	elif [  "$CountryCode" = "EU" ]; then
-		uci set wireless.$device.country=EU
-		uci set wireless.$device.rdregion=CE
-		uci set wireless.$device.region=1
-		uci set wireless.$device.aregion=6
-		uci commit wireless
-	else
-		uci set wireless.$device.country=CN
-		uci set wireless.$device.region=1
-		uci set wireless.$device.aregion=0
-		uci delete wireless.$device.rdregion
-		uci commit wireless
-	fi
-!
+	# if [  "$CountryCode" = "TW" ]; then
+	# 	uci set wireless.$device.country=TW
+	# 	uci set wireless.$device.rdregion=FCC
+	# 	uci set wireless.$device.region=0
+	# 	uci set wireless.$device.aregion=19
+	# 	uci commit wireless
+	# elif [  "$CountryCode" = "HK" ]; then
+	# 	uci set wireless.$device.country=HK
+	# 	uci set wireless.$device.region=1
+	# 	uci set wireless.$device.aregion=0
+	# 	uci commit wireless
+	# elif [  "$CountryCode" = "US" ]; then
+	# 	uci set wireless.$device.country=US
+	# 	uci set wireless.$device.region=5
+	# 	uci set wireless.$device.aregion=7
+	# 	uci commit wireless
+	# else
+	# 	uci set wireless.$device.country=CN
+	# 	uci set wireless.$device.rdregion=CE
+	# 	uci set wireless.$device.region=1
+	# 	uci set wireless.$device.aregion=0
+	# 	uci commit wireless
+	# fi
 
 	uci2dat -d $device -f $datpath > /tmp/uci2dat_$device.log
 }
@@ -158,11 +114,13 @@ prepare_ralink_wifi() {
 	# use + 4, otherwise we can just use - 4.
 	EXTCHA=0
 	[ "$channel" != auto ] && [ "$channel" -lt "5" ] && EXTCHA=1
-
+	
 }
 
 wifi_service_stop() {
 	killall acsc 2>/dev/null
+	killall bsd 2>/dev/null
+	# rk_stop.sh 2>/dev/null
 }
 
 scan_ralink_wifi() {
@@ -176,7 +134,11 @@ scan_ralink_wifi() {
 		echo "5G" > $logfile
 	fi
 	echo "scan_ralink_wifi($1,$2,$3,$4)" >> $logfile
-	sync_uci_with_dat $device /etc/Wireless/$device/$device.dat
+	if [ $device == "mt7615e2" -o $device == "mt7615e5" ]; then
+		sync_uci_with_dat $device /etc/wireless/$device/$device.dat
+	else
+		sync_uci_with_dat $device /etc/Wireless/$device/$device.dat
+	fi
 }
 
 disable_ralink_wifi() {
@@ -196,8 +158,34 @@ disable_ralink_wifi() {
 	echo "disable_ralink_wifi($1,$2,$3,$4) done" >> $logfile
 }
 
+function removeDup(){
+	newVifs=""
+	flag=0
+	for vif in $1; do
+		for i in $newVifs;do
+			if [ "$i" == "$vif" ]; then
+			let flag+=1;
+			break;
+			fi
+		done
+
+		if [ $flag -gt 0 ] ;then
+			let flag=0
+		else
+			if [ "$newVifs" == "" ];then
+				newVifs=$vif
+			else
+				newVifs=$newVifs" "$vif
+			fi
+		fi
+
+	done
+	echo $newVifs
+	return $?
+}
+
 enable_ralink_wifi() {
-	local device="$1" dmode channel radio logfile
+	local device="$1" dmode channel radio logfile wireless_path
 	local module="$2"
 
 	if [ $device == "mt7628" -o $device == "mt7603e" -o $device == "mt7620" -o $device == "mt7615e2" ]; then
@@ -207,26 +195,27 @@ enable_ralink_wifi() {
 	fi
 	echo "enable_ralink_wifi($1,$2,$3,$4)" >> $logfile
 
-	echo 3 > /proc/sys/vm/drop_caches
 	#reinit_wifi $device $module
 	config_get dmode $device mode
 	config_get channel $device channel
 	config_get radio $device radio
 	config_get vifs "$device" vifs
 	config_get disabled "$device" disabled
-	config_get country $device country
-	#overseas edtion always use EU txpower except BR
-	if [ $country != "BR" ]; then
-		country="EU"
-	fi
-	if [ -f /etc/Wireless/"$device"/singlesku/"$country"_SingleSKU.dat ];then
-		if [ -f /etc/Wireless/"$device"/SingleSKU.dat ];then
-			rm /etc/Wireless/"$device"/SingleSKU.dat
-		fi
-		cp /etc/Wireless/"$device"/singlesku/"$country"_SingleSKU.dat /etc/Wireless/"$device"/SingleSKU.dat
+	country=`bdata get CountryCode`
+	if [ $device == "mt7615e2" -o $device == "mt7615e5" ]; then
+		wireless_path="wireless"
 	else
-		cp /etc/Wireless/"$device"/singlesku/CN_SingleSKU.dat /etc/Wireless/"$device"/SingleSKU.dat
+		wireless_path="Wireless"
 	fi
+	if [ -f /etc/"$wireless_path"/"$device"/singlesku/"$country"_SingleSKU.dat ];then
+        if [ -f /etc/"$wireless_path"/"$device"/SingleSKU.dat ];then
+            rm /etc/"$wireless_path"/"$device"/SingleSKU.dat
+        fi
+		cp /etc/"$wireless_path"/"$device"/singlesku/"$country"_SingleSKU.dat /etc/"$wireless_path"/"$device"/SingleSKU.dat
+	else
+		cp /etc/"$wireless_path"/"$device"/singlesku/CN_SingleSKU.dat /etc/"$wireless_path"/"$device"/SingleSKU.dat
+	fi
+	vifs=$(removeDup "$vifs")
 	[ "$disabled" == "1" ] && return
 	for vif in $vifs; do
 		local ifname encryption key ssid mode hidden enctype
@@ -262,38 +251,46 @@ enable_ralink_wifi() {
 			config_get enctype $vif enctype
 			case "$encryption" in
 				NONE|none)
-					ifconfig $ifname up
-					iwpriv $ifname set ApCliEnable=0
+					iwpriv $ifname set Channel=$channel
+                    echo "AP Client none configure" >> $logfile
+					iwpriv $ifname set ApCliEnable=1
+                    echo "iwpriv $ifname set ApCliEnable=1" >> $logfile
+					iwpriv $ifname set ApCliAutoConnect=1
+                    echo "iwpriv $ifname set ApCliAutoConnect=1" >> $logfile
+                    ifconfig $ifname up
+                    echo "ifconfig $ifname up" >> $logfile
 					iwpriv $ifname set ApCliAuthMode=OPEN
+                    echo "iwpriv $ifname set ApCliAuthMode=OPEN" >> $logfile
 					iwpriv $ifname set ApCliEncrypType=NONE
+                    echo "iwpriv $ifname set ApCliEncrypType=NONE" >> $logfile
 					iwpriv $ifname set ApCliSsid="$ssid"
+                    echo "iwpriv $ifname set ApCliWPAPSK=\"$key\"" >> $logfile
 					iwpriv $ifname set ApCliEnable=1
 					iwpriv $ifname set ApCliAutoConnect=1
+					echo "AP Client configure done" >> $logfile
 					;;
 				WEP|wep)
-					ifconfig $ifname up
+					iwpriv $ifname set Channel=$channel
 					iwpriv $ifname set ApCliEnable=0
 					iwpriv $ifname set ApCliAuthMode=OPEN
 					iwpriv $ifname set ApCliEncrypType=WEP
 					iwpriv $ifname set ApCliDefaultKeyID=1
 					iwpriv $ifname set ApCliKey1="$key"
 					iwpriv $ifname set ApCliSsid="$ssid"
-					iwpriv $ifname set ApCliEnable=1
 					iwpriv $ifname set ApCliAutoConnect=1
 					;;
 				SHARED|shared)
-					ifconfig $ifname up
+					iwpriv $ifname set Channel=$channel
 					iwpriv $ifname set ApCliEnable=0
 					iwpriv $ifname set ApCliAuthMode=SHARED
 					iwpriv $ifname set ApCliEncrypType=WEP
 					iwpriv $ifname set ApCliDefaultKeyID=1
 					iwpriv $ifname set ApCliKey1="$key"
 					iwpriv $ifname set ApCliSsid="$ssid"
-					iwpriv $ifname set ApCliEnable=1
 					iwpriv $ifname set ApCliAutoConnect=1
 					;;
 				WPAPSK|wpa-psk)
-					ifconfig $ifname up
+					iwpriv $ifname set Channel=$channel
 					iwpriv $ifname set ApCliEnable=0
 					iwpriv $ifname set ApCliAuthMode=WPAPSK
 					if [ -z "$enctype" ]; then
@@ -302,10 +299,10 @@ enable_ralink_wifi() {
 					iwpriv $ifname set ApCliEncrypType=$enctype
 					iwpriv $ifname set ApCliSsid="$ssid"
 					iwpriv $ifname set ApCliWPAPSK="$key"
-					iwpriv $ifname set ApCliEnable=1
 					iwpriv $ifname set ApCliAutoConnect=1
 					;;
 				WPA2PSK|wpa2-psk|mixed-psk)
+					iwpriv $ifname set Channel=$channel
 					echo "AP Client configure" >> $logfile
 					ifconfig $ifname up
 					echo "ifconfig $ifname up" >> $logfile
@@ -399,8 +396,19 @@ enable_ralink_wifi() {
 		# iwpriv $ifname set NoForwardingBTNBSSID="${isolate:-0}"
 	done
 
+    apmode=`uci get xiaoqiang.common.NETMODE 2> /dev/null`
+
+    echo "ap $apmode mi $ready_ifname" >> $logfile
+    if [ "$apmode" == "wifiapmode" -o "$apmode" == "lanapmode" ]; then
+        echo "ifconfig $ready_ifname down" >> $logfile
+        ifconfig $ready_ifname down
+    fi
+
     if [ "$device" == "mt7603e" ]; then
         acsc > /dev/null
+        bsd > /dev/null
+	# rk_stop.sh 2>/dev/null
+	# rk_start.sh > /dev/null
     fi
 	echo "enable_ralink_wifi($1,$2,$3,$4) done" >> $logfile
 }
@@ -411,7 +419,6 @@ detect_ralink_wifi() {
 	local module="$2"
 	local ifname
 	local CountryCode
-	local Region Aregion edchk
 
 	if [ $device == "mt7628" -o $device == "mt7603e" -o $device == "mt7620" -o $device == "mt7615e2" ]; then
 		logfile='/tmp/mt76xx2.sh.log'
@@ -420,27 +427,11 @@ detect_ralink_wifi() {
 	fi
 	echo "detect_ralink_wifi($1,$2,$3,$4)" >> $logfile
 
-	CountryCode=`nvram get CountryCode`
-	if [ -z $CountryCode ]; then
-		CountryCode="EU"
-	fi
-	case "$CountryCode" in
-	# 比利时|德国|丹麦|西班牙|芬兰|法国|爱尔兰|意大利|荷兰|波兰|瑞典|葡萄牙
-		BE | DE | DK | ES | FI | FR | IE | IT | NL | PL | SE | PT )
-			CountryCode="EU"
-			edchk=1
-			;;
-		#欧盟|瑞士|挪威|乌克兰|英国
-		EU | CH | NO | UA | GB )
-			edchk=1
-			;;
-		* )
-			edchk=0
-			;;
-	esac
-	#chan1-13 for 2.4G, band1 for 5G
-	Region=1
-	Aregion=6
+	CountryCode=`bdata get CountryCode`
+
+	if [ $CountryCode == "" ]; then
+		CountryCode="CN"
+        fi
 
 	cd /sys/module/
 	[ -d $module ] || return
@@ -453,7 +444,7 @@ detect_ralink_wifi() {
 			hwband="2_4G"
 			hwmode="11ng"
 			;;
-		mt7610e | mt7612 )
+		mt7610e | mt7613 | mt7663 )
 			ifname="wl0"
 			ssid=`nvram get wl0_ssid`
 			hwband="5G"
@@ -471,14 +462,13 @@ config wifi-device	'$device'
 	option bw 	'0'
 	option autoch   '2'
 	option radio    '1'
-	option txpwr	'max'
+	option txpwr	'mid'
 	option hwband   '$hwband'
 	option hwmode   '$hwmode'
 	option disabled '0'
-	option country  '$CountryCode'
-	option region   '$Region'
-	option aregion  '$Aregion'
-	option ed_chk   '$edchk'
+	option country '$CountryCode'
+	option region '1'
+	option aregion '0'
 
 config wifi-iface
 	option device   '$device'
@@ -487,31 +477,32 @@ config wifi-iface
 	option mode     'ap'
 	option ssid 	'$ssid'
 	option encryption 'none'
+	option disabled '0'
 
 EOF
 	if [ "$device" = "mt7603e" ]; then
 		cat <<EOF
 config wifi-iface 'minet_ready'
-        option disabled '1'
-        option device 'mt7603e'
-        option ifname 'wl2'
-        option network  'ready'
-        option mode 'ap'
-        option ssid 'minet_ready'
-        option hidden '1'
-        option encryption 'none'
+	option disabled '1'
+	option device 'mt7603e'
+	option ifname 'wl2'
+	option network  'ready'
+	option mode 'ap'
+	option ssid 'minet_ready'
+	option hidden '1'
+	option encryption 'none'
 
 EOF
 	fi
-    if [ "$device" = "mt7603e" ]; then
+	if [ "$device" = "mt7603e" ]; then
 		cat <<EOF
 config wifi-iface 'guest_2G'
-        option disabled '1'
-        option device 'mt7603e'
-        option ifname 'wl3'
-        option network 'guest'
-        option mode 'ap'
+	option disabled '1'
+	option device 'mt7603e'
+	option ifname 'wl3'
+	option network 'guest'
+	option mode 'ap'
 
 EOF
-    fi
+	fi
 }

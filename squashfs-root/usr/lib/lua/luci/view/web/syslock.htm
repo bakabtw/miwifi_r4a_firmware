@@ -55,9 +55,8 @@
         </div>
         <div class="reset-tips">
             <h3><%:升级注意%></h3>
-            <p><%:当刷回较低版本时，建议您同时清除掉用户配置，以防止版本兼容性引起的异常故障%></p>
-            <p class="label"><label><input type="checkbox" name="isreset" id="isreset"> <span><%:清除当前所有用户配置%></span></label></p>
-            <button id="btnFlashrom" class="btn btn-primary btn-l"><span><%:确定%></span></button>
+            <p><%:出于安全考虑，不允许选择低于当前版本号的固件进行升级%></p>
+            <button id="btnReturn" class="btn btn-primary btn-l"><span style="width: 328px;"><%:返回%></span></button>
         </div>
     </div>
 </div>
@@ -269,6 +268,11 @@ $(function(){
             var isreset = $('#isreset')[0].checked;
             flashRom(isreset).done(flashCallback);
             flashRoming();
+        });
+
+        $('#btnReturn').click(function(e){
+            e.preventDefault();
+            window.history.go(-1)
         });
 
         stopRefresh();

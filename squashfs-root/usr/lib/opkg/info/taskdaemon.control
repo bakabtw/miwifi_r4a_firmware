@@ -1,0 +1,8 @@
+Package: taskdaemon
+Version: 0.2-1
+Depends: libc, libubox, ubus, libblobmsg-json, libnl-tiny
+Source: package/miwifi/taskdaemon
+Section: net
+Architecture: mipsel_24kc
+Installed-Size: 6188
+Description:  taskdaemon

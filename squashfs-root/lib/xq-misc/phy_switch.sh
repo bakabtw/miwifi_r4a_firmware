@@ -8,9 +8,19 @@ sw_start_lan() {
     config_get power_reg sw_reg sw_power
     config_get up_val sw_reg sw_power_up
     config_get lan_ports sw_reg sw_lan_ports
+
     for p in $lan_ports
     do
-	mii_mgr -s -p $p -r $power_reg -v $up_val >/dev/null
+        if [ -n "$1" -a "$p" == "$1" ]
+        then
+            mii_mgr -s -p $p -r $power_reg -v $up_val >/dev/null
+            return
+        fi
+    done
+
+    for p in $lan_ports
+    do
+        mii_mgr -s -p $p -r $power_reg -v $up_val >/dev/null
     done
 }
 
@@ -19,9 +29,19 @@ sw_stop_lan() {
     config_get power_reg sw_reg sw_power
     config_get down_val sw_reg sw_power_down
     config_get lan_ports sw_reg sw_lan_ports
+
     for p in $lan_ports
     do
-	mii_mgr -s -p $p -r $power_reg -v $down_val >/dev/null
+        if [ -n "$1" -a "$p" == "$1" ]
+        then
+            mii_mgr -s -p $p -r $power_reg -v $down_val >/dev/null
+            return
+        fi
+    done
+
+    for p in $lan_ports
+    do
+        mii_mgr -s -p $p -r $power_reg -v $down_val >/dev/null
     done
 }
 

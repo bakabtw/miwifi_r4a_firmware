@@ -1,0 +1,8 @@
+Package: thrifttunnel_c
+Version: 1-1.0
+Depends: libc, libubus, ubusd, libpolarssl
+Source: package/miwifi/thrifttunnel_c
+Section: opt
+Architecture: mipsel_24kc
+Installed-Size: 2533
+Description:  the utility tunnel to service based ubus

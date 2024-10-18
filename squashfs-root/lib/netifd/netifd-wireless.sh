@@ -163,8 +163,8 @@ _wireless_add_process() {
 	json_add_int pid "$1"
 	json_add_string exe "$exe"
 	[ -n "$3" ] && json_add_boolean required 1
-	exe2="$(readlink -f /proc/$pid/exe)"
-	[ "$exe" = "$exe2" ] && echo "WARNING (wireless_add_process): executable path $exe does not match process $1 path ($exe2)"
+	exe2="$(readlink -f /proc/$1/exe)"
+	[ "$exe" != "$exe2" ] && echo "WARNING (wireless_add_process): executable path $exe does not match process $1 path ($exe2)"
 	_wdev_notify
 }
 
@@ -195,15 +195,15 @@ wireless_vif_parse_encryption() {
 	auth_mode_open=1
 	auth_mode_shared=0
 	auth_type=none
-	wpa_pairwise=CCMP
+	wpa_cipher=CCMP
 	case "$encryption" in
-		*tkip+aes|*tkip+ccmp|*aes+tkip|*ccmp+tkip) wpa_pairwise="CCMP TKIP";;
-		*aes|*ccmp) wpa_pairwise="CCMP";;
-		*tkip) wpa_pairwise="TKIP";;
+		*tkip+aes|*tkip+ccmp|*aes+tkip|*ccmp+tkip) wpa_cipher="CCMP TKIP";;
+		*aes|*ccmp) wpa_cipher="CCMP";;
+		*tkip) wpa_cipher="TKIP";;
 	esac
 
 	# 802.11n requires CCMP for WPA
-	[ "$enable_ht:$wpa_pairwise" = "1:TKIP" ] && wpa_pairwise="CCMP TKIP"
+	[ "$enable_ht:$wpa_cipher" = "1:TKIP" ] && wpa_cipher="CCMP TKIP"
 
 	# Examples:
 	# psk-mixed/tkip    => WPA1+2 PSK, TKIP
@@ -222,9 +222,10 @@ wireless_vif_parse_encryption() {
 		;;
 		*)
 			wpa=0
-			wpa_pairwise=
+			wpa_cipher=
 		;;
 	esac
+	wpa_pairwise="$wpa_cipher"
 
 	case "$encryption" in
 		*psk*)
@@ -248,11 +249,23 @@ wireless_vif_parse_encryption() {
 	esac
 }
 
+_wireless_set_brsnoop_isolation() {
+	local multicast_to_unicast="$1"
+	local isolate
+
+	json_get_var isolate isolate
+
+	[ ${isolate:-0} -gt 0 -o -z "$network_bridge" ] && return
+	[ ${multicast_to_unicast:-1} -gt 0 ] && json_add_boolean isolate 1
+}
+
 for_each_interface() {
 	local _w_types="$1"; shift
 	local _w_ifaces _w_iface
 	local _w_type
 	local _w_found
+
+	local multicast_to_unicast
 
 	json_get_keys _w_ifaces interfaces
 	json_select interfaces
@@ -260,7 +273,9 @@ for_each_interface() {
 		json_select "$_w_iface"
 		if [ -n "$_w_types" ]; then
 			json_get_var network_bridge bridge
+			json_get_var multicast_to_unicast multicast_to_unicast
 			json_select config
+			_wireless_set_brsnoop_isolation "$multicast_to_unicast"
 			json_get_var _w_type mode
 			json_select ..
 			_w_types=" $_w_types "
@@ -276,7 +291,7 @@ for_each_interface() {
 }
 
 _wdev_common_device_config() {
-	config_add_string channel hwmode htmode
+	config_add_string channel hwmode htmode noscan
 }
 
 _wdev_common_iface_config() {

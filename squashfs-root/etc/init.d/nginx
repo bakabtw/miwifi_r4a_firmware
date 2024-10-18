@@ -1,0 +1,64 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2015 OpenWrt.org
+
+START=21
+
+USE_PROCD=1
+
+start_service() {
+	ifconfig lo | grep "inet addr"
+        if [ $? -ne 0 ]; then
+                ifconfig lo 127.0.0.1 netmask 255.0.0.0
+        fi
+	
+	# start fcgi-cgi first
+	procd_open_instance
+	# add flag -n, do NOT let spawn-fcgi exit, otherwise procd may be unable to capture the pid of fcgi
+	procd_set_param command /usr/bin/spawn-fcgi -a 127.0.0.1 -p 8920 -U nobody -F 1 -n -- /usr/bin/fcgi-cgi
+	#procd_set_param file /etc/nginx/nginx.conf
+
+	# setup cgroup params
+	cgroup_name=/sys/fs/cgroup/cpuset/fcgi
+	[ -d $cgroup_name ] || mkdir $cgroup_name
+	if [ -d $cgroup_name ]; then
+		echo "0" > $cgroup_name/cpuset.mems
+		echo "0-1" > $cgroup_name/cpuset.cpus
+		[ -f $cgroup_name/tasks ] && procd_set_param cgroup $cgroup_name/tasks
+	else
+		echo "failed to setup cgroup for nginx"
+	fi
+
+	procd_set_param respawn
+	procd_close_instance
+	echo "start fcgi-cgi by spawn-fcgi."
+	# start nginx
+	[ -d /var/log/nginx ] || mkdir -p /var/log/nginx
+	[ -d /var/lib/nginx ] || mkdir -p /var/lib/nginx
+
+    #force https check
+    force_https=`uci -q get nginx.main.force_https`
+    if [ "$force_https" = "1" ]; then
+        sed -i '/include.*force-redirect-https.conf/ s/^.*$/include force-redirect-https.conf;/' /etc/nginx/nginx_http.conf
+    else
+        sed -i '/include.*force-redirect-https.conf/ s/^.*$/#include force-redirect-https.conf;/' /etc/nginx/nginx_http.conf
+    fi
+
+	procd_open_instance
+	procd_set_param command /usr/sbin/nginx -c /etc/nginx/nginx.conf -g 'daemon off;'
+	procd_set_param file /etc/nginx/nginx.conf
+	procd_set_param respawn
+	procd_close_instance
+	echo "start nginx ok."
+}
+
+##########################################
+### old cmdline, just for refer ##########
+##########################################
+# fastcgi params
+FCGI_CONNECTION=4
+FCGI_NUM=1
+fcgi_connection=${FCGI_CONNECTION:-8}
+FCGIFLAG="/usr/bin/fcgi-cgi -c $fcgi_connection" # default is 16 connection which is too much
+fcgi_process=${FCGI_NUM:-2}
+FCGILINE="nice -n-5 /usr/bin/spawn-fcgi -a 127.0.0.1 -p 8920 -u root -U nobody -F $fcgi_process -- ${FCGIFLAG}"
+##########################################

@@ -50,12 +50,19 @@ taskmonitor() {
 
     [ -z "$PROCFLAG" ] && PROCFLAG="$PROCLINE"
 
+        if [ -n "$PROCPRIO" ]
+        then
+                FLAG_PROCPRIO=$PROCPRIO
+        else
+                FLAG_PROCPRIO=0
+        fi
+
     if [ -n "$PROCLINE" -a -n "$PROCFLAG" ]; then
         if [ -n "$PROCNUM" ]; then
-            /usr/sbin/taskmonitorTool -p "$PROCLINE" -b "$PROCFLAG" -i "$MONNAME" -n $PROCNUM -t $1 -C $CHECK_BIN_FLAG -M $OOM -r $RSS -L $EXT_LIB_PATH -D $WORK_DIR_PATH -g $USE_CGROUP_PATH -d $DEBUG_FLAG -v ${VMZ} --vmzdata ${VMZDATA} --stacksize ${STACKSIZE} --fastreboot ${FAST_REBOOT_FLAG} --delay ${DELAY}
+            /usr/sbin/taskmonitorTool -p "$PROCLINE" -b "$PROCFLAG" -i "$MONNAME" -n $PROCNUM -t $1 -C $CHECK_BIN_FLAG -M $OOM -r $RSS -L $EXT_LIB_PATH -D $WORK_DIR_PATH -g $USE_CGROUP_PATH -d $DEBUG_FLAG -v ${VMZ} --vmzdata ${VMZDATA} --stacksize ${STACKSIZE} --fastreboot ${FAST_REBOOT_FLAG} --delay ${DELAY} -l $FLAG_PROCPRIO
             ret=$?
         else
-            /usr/sbin/taskmonitorTool -p "$PROCLINE" -b "$PROCFLAG" -i "$MONNAME" -t $1 -C $CHECK_BIN_FLAG -M $OOM -r $RSS -L $EXT_LIB_PATH -D $WORK_DIR_PATH -g $USE_CGROUP_PATH -d $DEBUG_FLAG -v ${VMZ} --vmzdata ${VMZDATA} --stacksize ${STACKSIZE} --fastreboot ${FAST_REBOOT_FLAG} --delay ${DELAY}
+            /usr/sbin/taskmonitorTool -p "$PROCLINE" -b "$PROCFLAG" -i "$MONNAME" -t $1 -C $CHECK_BIN_FLAG -M $OOM -r $RSS -L $EXT_LIB_PATH -D $WORK_DIR_PATH -g $USE_CGROUP_PATH -d $DEBUG_FLAG -v ${VMZ} --vmzdata ${VMZDATA} --stacksize ${STACKSIZE} --fastreboot ${FAST_REBOOT_FLAG} --delay ${DELAY} -l $FLAG_PROCPRIO
             ret=$?
         fi
     fi

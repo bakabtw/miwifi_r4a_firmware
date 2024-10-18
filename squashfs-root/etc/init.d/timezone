@@ -48,6 +48,6 @@ timezone_config() {
 
 start() {
 	config_load system
-    config_foreach timezone_config system
+        config_foreach timezone_config system
 }
 

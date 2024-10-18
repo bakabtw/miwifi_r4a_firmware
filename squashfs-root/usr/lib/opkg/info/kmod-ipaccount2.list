@@ -1,0 +1,2 @@
+/etc/modules.d/99-ipaccount2
+/lib/modules/4.4.198.mt7621/ip_account.ko

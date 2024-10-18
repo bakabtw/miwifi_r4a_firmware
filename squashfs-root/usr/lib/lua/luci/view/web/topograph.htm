@@ -4,11 +4,14 @@
     ]]--
     local XQVersion = require "xiaoqiang.XQVersion"
     local ver = XQVersion.webVersion
+        local XQSysUtil = require "xiaoqiang.util.XQSysUtil"
+    local hardware = string.lower( XQSysUtil.getHardware() )
 %>
 <%include("web/inc/head")%>
 <title><%:小米路由器%></title>
 <meta name="viewport" content="width=1200">
 <link href="<%=resource%>/web/css/bc.css?v=<%=ver%>" rel="stylesheet">
+<link href="<%=resource%>/web/css/layout.css?v=<%=ver%>" rel="stylesheet">
 <link href="<%=resource%>/web/css/topograph.css?v=<%=ver%>" rel="stylesheet">
 </head>
 <body>
@@ -98,6 +101,7 @@
 <![endif]-->
 <script type="text/javascript">
 $(function(){
+    
     //存储路由器节点字符
     var html = [];
     var routerColor = {
@@ -152,6 +156,11 @@ $(function(){
             hoverpic: getRouterPic( obj.hardware, obj.color, false  ).hoverSrc
         });
         $('#root').append( html );
+        //修改d01名称
+        hardware = '<%=hardware%>';
+        if(hardware == 'd01'){
+            $('.info em').html('网关')
+        }
     };
     //创建路由器单节点
     var createRouterItem = function( obj ){

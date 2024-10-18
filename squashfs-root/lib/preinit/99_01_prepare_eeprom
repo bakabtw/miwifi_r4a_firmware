@@ -3,18 +3,40 @@
 # Copyright (C) 2010 Vertical Communications
 
 do_prepare_eeprom() {
-	# fix eeprom file for R4 hardware ver B
-	hwver=`gpio 3 | cut -b 11`
-	[ "$hwver" = "1" ] || return 0
-
-	path=`readlink /etc/Wireless/mt7612/mt7612.eeprom.bin`
-	[ "$path" = "/lib/wifi/mt7612_verb.eeprom.bin" ] && return 0
+	# fix eeprom file for R2100 hardware ver B
+	path=`readlink /etc/Wireless/mt7603e/mt7603e.eeprom.bin`
+	[ "$path" = "/lib/wifi/mt7603e_verb.eeprom.bin" ] && return 0
 
 	#fix up
-	rm -f /etc/Wireless/mt7612/mt7612.eeprom.bin
-	ln -s /lib/wifi/mt7612_verb.eeprom.bin /etc/Wireless/mt7612/mt7612.eeprom.bin
+	[ -f /etc/Wireless/mt7603e/mt7603e_verb.eeprom.bin ] || return 0
+
+	rm -f /etc/Wireless/mt7603e/mt7603e.eeprom.bin
+	cp /etc/Wireless/mt7603e/mt7603e_verb.eeprom.bin /etc/Wireless/mt7603e/mt7603e.eeprom.bin
 	return 0
 }
 
-boot_hook_add preinit_main do_prepare_eeprom
+do_prepare_diffhw() {
+#gpio 4/3
+#R2100定义：00；
+#R2100升级版：01；
+#RM2100定义：10
+#R4AV2:nouse
+
+    [ "R4AV2" = "`cat /proc/xiaoqiang/model`" ] && return 0
+
+    id0=$(gpio 4 | cut -b 11)
+    id1=$(gpio 3 | cut -b 11)
+    id=$((id1<<1|id0<<0))
+
+    if [ $id = "1" ]; then
+        # redmi r2100 config
+        [ -f /lib/xqled/xqled_verb ] && cp -f /lib/xqled/xqled_verb /etc/config/xqled
+    fi
+    if [ $id = "1" -o $id = "2" ]; then
+        # redmi r2100 and 2100 upgrade config
+        do_prepare_eeprom
+    fi
+}
+
+boot_hook_add preinit_main do_prepare_diffhw
 

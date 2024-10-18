@@ -26,6 +26,7 @@ local hardware = string.lower( XQSysUtil.getHardware() )
 <title><%:小米路由器%></title>
 <meta name="viewport" content="width=1200">
 <link href="<%=resource%>/web/css/bc.css?v=<%=ver%>" rel="stylesheet">
+<link href="<%=resource%>/web/css/layout.css?v=<%=ver%>" rel="stylesheet">
 <link href="<%=resource%>/web/css/wifi.css?v=<%=ver%>" rel="stylesheet">
 </head>
 <body>
@@ -65,18 +66,19 @@ local hardware = string.lower( XQSysUtil.getHardware() )
             </div>
         </div>
         <%end%>
-         <%if features["wifi"]["wifi_mu_mimo"] == "1" then%>
-        <div class="mod-set mod-wifi">
-            <div class="hd">
-                <h3><%:MU-MIMO/Beamforming%></h3>
-                <div class="switch">
-                    <a href="#txbfswitch" id="txbfswitch" class="btn-switch btn-switch-on" data-on="1"></a>
+
+        <%if false then%>
+            <div class="mod-set mod-wifi">
+                <div class="hd">
+                    <h3><%:MU-MIMO%></h3>
+                    <div class="switch">
+                        <a href="#txbfswitch" id="txbfswitch" class="btn-switch btn-switch-on" data-on="1"></a>
+                    </div>
+                </div>
+                <div class="bd">
+                    <p><%:MU-MIMO“多用户多入多出”技术，可以让路由器与多台终端同时通信，极大改善无线资源利用效率，提升Wi-Fi体验。该功能生效需要路由器和终端同时支持。%></p>
                 </div>
             </div>
-            <div class="bd">
-                <p><%:MU-MIMO“多用户多入多出”技术，与其依赖的Beamforming“波束成形”技术结合，可以让路由器与多台终端同时通信，极大改善无线资源利用效率，提升Wi-Fi体验。该功能生效需要路由器和终端同时支持。开启开关会同时启用MU-MIMO和Beamforming。%></p>
-            </div>
-        </div>
         <%end%>
     </div>
 
@@ -127,61 +129,6 @@ local hardware = string.lower( XQSysUtil.getHardware() )
         </span>
         <em class="t"></em>
     </div>
-     {if ($relayWifi == 0)}
-        <input type="hidden" name="channel" value="{$channel}">
-        <input type="hidden" name="bandwidth" value="{$bandwidth}">
-        <input type="hidden" name="txpwr" value="{$txpwr}">
-    {else}
-    <div class="form-item-select">
-        <label class="k"><%:无线信道%></label>
-        <span class="v">
-        <select name="channel" class="beautify channel"  data-id="{$wifitype}">
-            {for(var i=0, len=$channels.length; i<len; i++)}
-                <option value="{$channels[i]['c']}" {if ($channel==$channels[i]['c'])}selected{/if}>
-                {if ($channels[i]['c']==0)}<%:自动%>
-                    {if ($channelInfo["channel"] != "0")}
-                        ({$channelInfo["channel"]})
-                    {/if}
-                {else}
-                    {$channels[i]['c']}
-                {/if}
-                </option>
-            {/for}
-        </select>
-        </span>
-        <em class="t"></em>
-    </div>
-    <div class="form-item-select itemBandwidth" {if ($channel == "0")}style="display:none;"{/if}>
-        <label class="k"><%:频段带宽%></label>
-        <span class="v">
-            {if ($channel == "0")}
-            <select name="bandwidth" class="beautify" id="bandwidth" >
-                <option value="0"><%:自动%></option>
-            </select>
-            {else}
-            <select name="bandwidth" class="beautify" >
-                <option value="0" {if ("0" == $bandwidth)}selected="selected"{/if}><%:自动%></option>
-                {for(var i=0, len=$channelInfo["bandList"].length; i<len; i++)}
-                    <option value="{$channelInfo["bandList"][i]}" {if ($channelInfo["bandList"][i] == $bandwidth)}selected="selected"{/if}>{$channelInfo["bandList"][i]}M</option>
-                {/for}
-            </select>
-            {/if}
-        </span>
-        <em class="t"></em>
-    </div>
-    <div class="form-item-select">
-        <label class="k"><%:信号强度%></label>
-        <span class="v">
-
-            <select name="txpwr" class="beautify txpwr" >
-                <option value="max"{if ($txpwr == "max")} selected{/if}><%:穿墙%></option>
-                <option value="mid"{if ($txpwr == "mid")} selected{/if}><%:标准%></option>
-                <option value="min"{if ($txpwr == "min")} selected{/if}><%:节能%></option>
-            </select>
-        </span>
-        <em class="t"></em>
-    </div>
-    {/if}
 </script>
 <script type="text/tmpl" id="tplWifiBsd">
    <!--  {if ($relayWifi == 0)} -->
@@ -213,16 +160,26 @@ local hardware = string.lower( XQSysUtil.getHardware() )
         <span class="v">
             {if ($channel == "0")}
             <select name="bandwidth" class="beautify" id="bandwidth" >
-                <option value="0"><%:自动%></option>
+                {if ($channelInfo["bandList"].length >= 3)}
+		    <option value="0"><%:80/40/20MHz%></option>
+                {/if}
+                {if ($channelInfo["bandList"].length == 2)}
+		    <option value="0"><%:40/20MHz%></option>
+                {/if}
             </select>
             {else}
             <select name="bandwidth" class="beautify" >
-                <option value="0" {if ("0" == $bandwidth)}selected="selected"{/if}><%:自动%></option>
+                {if ($channelInfo["bandList"].length >= 3)}
+                    <option value="0" {if ($bandwidth  == "0" )}selected="selected"{/if}><%:80/40/20MHz%></option>
+                {/if}
+                {if ($channelInfo["bandList"].length == 2)}
+                    <option value="0" {if ($bandwidth  == "0" )}selected="selected"{/if}><%:40/20MHz%></option>
+                {/if}
                 {for(var i=0, len=$channelInfo["bandList"].length; i<len; i++)}
                     <option value="{$channelInfo["bandList"][i]}" {if ($channelInfo["bandList"][i] == $bandwidth)}selected="selected"{/if}>{$channelInfo["bandList"][i]}M</option>
                 {/for}
             </select>
-            {/if}
+	    {/if}
         </span>
         <em class="t"></em>
     </div>
@@ -286,7 +243,7 @@ local hardware = string.lower( XQSysUtil.getHardware() )
         <input type="hidden" name="bandwidth" value="{$bandwidth}">
         <input type="hidden" name="txpwr" value="{$txpwr}">
     {else}
-    <div class="form-item-select">
+    <div  class="form-item-select">
         <label class="k"><%:无线信道%></label>
         <span class="v">
         <select name="channel" class="beautify channel"  data-id="{$wifitype}">
@@ -310,19 +267,30 @@ local hardware = string.lower( XQSysUtil.getHardware() )
         <span class="v">
             {if ($channel == "0")}
             <select name="bandwidth" class="beautify" id="bandwidth" >
-                <option value="0"><%:自动%></option>
+                {if ($channelInfo["bandList"].length >= 3)}
+		    <option value="0"><%:80/40/20MHz%></option>
+                {/if}
+                {if ($channelInfo["bandList"].length == 2)}
+		    <option value="0"><%:40/20MHz%></option>
+                {/if}
             </select>
             {else}
             <select name="bandwidth" class="beautify" >
-                <option value="0" {if ("0" == $bandwidth)}selected="selected"{/if}><%:自动%></option>
+                {if ($channelInfo["bandList"].length >= 3)}
+                    <option value="0" {if ($bandwidth  == "0" )}selected="selected"{/if}><%:80/40/20MHz%></option>
+                {/if}
+                {if ($channelInfo["bandList"].length == 2)}
+                    <option value="0" {if ($bandwidth  == "0" )}selected="selected"{/if}><%:40/20MHz%></option>
+                {/if}
                 {for(var i=0, len=$channelInfo["bandList"].length; i<len; i++)}
                     <option value="{$channelInfo["bandList"][i]}" {if ($channelInfo["bandList"][i] == $bandwidth)}selected="selected"{/if}>{$channelInfo["bandList"][i]}M</option>
                 {/for}
             </select>
-            {/if}
+	    {/if}
         </span>
         <em class="t"></em>
     </div>
+    {/if}
     <div class="form-item-select">
         <label class="k"><%:信号强度%></label>
         <span class="v">
@@ -335,7 +303,7 @@ local hardware = string.lower( XQSysUtil.getHardware() )
         </span>
         <em class="t"></em>
     </div>
-    {/if}
+    
     <div class="form-contral">
         <button type="submit" class="btn btn-primary btn-l hidden"><span><%:保存%></span></button>
     </div>
@@ -391,15 +359,15 @@ local hardware = string.lower( XQSysUtil.getHardware() )
                     var wifiitem = wifiinfo[i];
                     var password = wifiitem.password;
                     var encryption = wifiitem.encryption;
-                    var type = '<%=active_apcli%>';
-
+                    var type = '<%=active_apcli%>';// new:wl11 ----2.4G 中继;wl12------5.G 中继
                     var relayWifi = 1;
 
                     if ( encryption == 'none' ) {
                         password = '';
                     }
-                     if ( i == 0 && type == 'apcli0') { //apclii0 is 5G relay flag,apcli0 is 2.4G
-                             relayWifi = 0;
+                     if ( i == 0 && type == 'apcli0') { //new:wl11 ----2.4G 中继;wl12------5.G 中继
+                                                        //恢复老版本：apclii0 is 5G relay flay,apcli0 is 2.4G
+                             relayWifi = 0;//yincang
                           }
 
                     if (haswifi50 && i == 1) {
@@ -410,7 +378,8 @@ local hardware = string.lower( XQSysUtil.getHardware() )
                             .attr('data-on', '0');
 
                         }
-                         if (type == 'apclii0') { //apclii0 is 5G relay flag,apcli0 is 2.4G
+                         if (type == 'apclii0') { //new:wl11 ----2.4G 中继;wl12------5.G 中继
+                                                  //恢复老版本：apclii0 is 5G relay flay,apcli0 is 2.4G
                             relayWifi = 0;
                      }
                     }
@@ -479,15 +448,16 @@ local hardware = string.lower( XQSysUtil.getHardware() )
                 $itemBandwidth = $( this ).closest('.form').find('.itemBandwidth'),
                 tips = $(this.parentNode).next('.t'),
                 pddk,
-                item = '<option value="0"><%:自动%></option>',
+                item = '<option value="0"><%:自动%></option>', 
+                bandtext,
                 bdlist = [];
                 var wifiname = $( this ).closest('.form').attr('id');
 
 
-            if ( channelVal === '0' ) {
-                $itemBandwidth.hide();
-                return;
-            }
+             if ( channelVal === '0' ) {
+                 $itemBandwidth.hide();
+                 return;
+             }
 
             pddk = $.parseJSON( global.wifi.pddk[id] );
             for (var i = 0; i < pddk.length; i++) {
@@ -497,28 +467,64 @@ local hardware = string.lower( XQSysUtil.getHardware() )
                     break;
                 }
             }
+            if (bdlist.length >= 3)
+            {
+                bandtext = '80/40/20MHz';
+                item = '<option value="0"><%:80/40/20MHz%></option>';
+            }
+            else if (bdlist.length == 2)
+            {
+                bandtext = '40/20MHz';
+                item = '<option value="0"><%:40/20MHz%></option>';
+            }
+            else
+            {
+                bandtext = '20MHz';
+                item = '';
+            }
             for ( var i = 0; i <  bdlist.length; i++ ) {
                 item += '<option value="'+bdlist[i]+'">'+ bdlist[i] +'M</option>';
             }
 
-            if(wifiname === 'wifiset24'){
-                $bandwidth.html( item ).val( '20' );
-                $itemBandwidth
-                    .find( '.dummy' )
-                    .text("<%:20M%>");
-            }else{
-                 $bandwidth.html( item );
-                 $itemBandwidth
-                    .find( '.dummy' )
-                    .text("<%:自动%>");
-            }
+            // if(wifiname === 'wifiset24'){
+            //     $bandwidth.html( item ).val( '20' );
+            //     $itemBandwidth
+            //         .find( '.dummy' )
+            //         .text("<%:20M%>");
+            // }else{
+            //      $bandwidth.html( item );
+            //      $itemBandwidth
+            //         .find( '.dummy' )
+            //         .text("<%:自动%>");
+            // }
 
+            // if ($bandwidth.val() == '0' && (channelVal <= 161 && channelVal >= 149))
+            // {
+                    // $.alert('<%:160MHz频宽只适用于36至64信道，系统会给你切换频宽至80MHz%>');
+                    // $bandwidth.html( item ).val("80")
+                    // $itemBandwidth
+                    //     .find( '.dummy' )
+                    //     .text("80MHz");
+            // }
+            // else if (channelVal == 165)
+            if (channelVal == 165)
+            {
+                    $bandwidth.html( item )
+                    $itemBandwidth
+                        .find( '.dummy' )
+                        .text(bandtext);
+            }
+            else
+            {
+                    var bandwidthSelect = $bandwidth.val()
+                    $bandwidth.html( item ).val(bandwidthSelect);
+            }
             $itemBandwidth.show();
 
             var channelIsBad = /36|40|44|48|52|56|60|64/.test( channelVal );
 
             if ( channelIsBad ) {
-                // tips.html('<%:你手工选择的当前信道有可能造成部分机型较旧的设备无法连接%>');
+                tips.html('<%:你手工选择的当前信道有可能造成部分机型较旧的设备无法连接%>');
             } else {
                 tips.html('');
             }
@@ -728,7 +734,7 @@ local hardware = string.lower( XQSysUtil.getHardware() )
             e.preventDefault();
             var txbf = $(this).attr('data-on') == 1 ? 0 : 3;
             var self = this;
-
+               
             var requestData = {
                 wifiIndex: 2,
                 txbf: txbf
@@ -754,7 +760,7 @@ local hardware = string.lower( XQSysUtil.getHardware() )
                                             .addClass('btn-switch-on')
                                             .attr('data-on', '1');
                                             }
-
+                                        
                                         $.pub( 'wifi:success' );
                                     } else {
                                         if ( rsp.code !== 401) {
@@ -771,7 +777,8 @@ local hardware = string.lower( XQSysUtil.getHardware() )
                     cancel : function(){}
                 } );
 
-        });
+        });  
+   
         $('#bsdswitch').on('click', function(e){
             e.preventDefault();
             var on = $(this).attr('data-on');

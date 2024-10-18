@@ -68,12 +68,10 @@ create_cpu_group() {
     mount -t cgroup none -o cpu /dev/cgroup/cpu
 
     mkdir -p /dev/cgroup/cpu/plugin
+	mkdir -p /dev/cgroup/cpu/samba
 
-
-
-    echo 80000 > /dev/cgroup/cpu/plugin/cpu.cfs_quota_us
-
-
+	#echo 900 > /dev/cgroup/cpu/cpu.shares
+	#echo 100 > /dev/cgroup/cpu/plugin/cpu.shares
 }
 
 
@@ -91,7 +89,7 @@ start() {
 
     create_net_group
 
-	create_cpu_group
+    create_cpu_group
 
     return 0
 }

@@ -26,10 +26,10 @@ share_block_table="wifishare_block"
 share_block_table_input="wifishare_block_input"
 
 share_whitehost_ipset="wifishare_whitehost"
-share_whitehost_file="/etc/dnsmasq.d/wifishare_whitehost.conf"
+share_whitehost_file="/tmp/dnsmasq.d/wifishare_whitehost.conf"
 
-domain_white_list_file="/var/etc/dnsmasq.d/wifishare_domain_list.conf"
-ios_white_list_file="/var/etc/dnsmasq.d/wifishare_ios_list.conf"
+domain_white_list_file="/tmp/dnsmasq.d/wifishare_domain_list.conf"
+ios_white_list_file="/tmp/dnsmasq.d/wifishare_ios_list.conf"
 share_domain_ipset="wifishare_domain_list"
 share_ios_ipset="wifishare_ios_list"
 
@@ -57,9 +57,9 @@ COUNT_INTERVAL_SECS=300 #1 minites
 WFSV2_flag="unchanged"
 should_update_flag="false"
 guest_miwifi_address="guest.miwifi.com"
-guest_miwifi_dnsmasq_conf="/var/etc/dnsmasq.d/guest_miwifi_dnsmasq.conf"
+guest_miwifi_dnsmasq_conf="/tmp/dnsmasq.d/guest_miwifi_dnsmasq.conf"
 index_cdn_addr="http://bigota.miwifi.com/xiaoqiang/webpage/wifishare/index.html"
-html_path="/etc/sysapihttpd/htdocs"
+html_path="/etc/nginx/htdocs"
 html_name="wifishare.html"
 
 # generate random number between min & max
@@ -176,7 +176,7 @@ share_dnsd_stop()
 
 share_parse_global()
 {
-    local section="$1"
+    section="$1"
     auth_timeout=""
     #timeout=""
 
@@ -273,7 +273,7 @@ share_fw_add_default()
     #iptables -t nat -A $share_nat_table -p udp -j REDIRECT --to-ports ${redirect_port}
 
     #dns redirect
-    local dnsd_ok="0"
+    dnsd_ok="0"
 #    ps | grep dnsd | grep -v grep >/dev/null 2>&1
 #    [ $? == 0 ] && {
 #        dnsd_ok="1"
@@ -318,12 +318,12 @@ is_active_type()
 {
 #　$1 type
 # $2 type list
-    local _type=""
+    _type=""
     [ "$1" == "" ] && return 1;
     [ "$2" == "" ] && return 1;
 
     #reload
-    local _is_wechat_pay=$(echo $2 | grep "wifirent_wechat_pay")
+    _is_wechat_pay=$(echo $2 | grep "wifirent_wechat_pay")
     [ "$_is_wechat_pay" != "" ] && {
         [ "$1" == "$WIFIRENT_NAME" ] && return 0;
     }
@@ -341,10 +341,10 @@ is_active_type()
 
 share_fw_add_device()
 {
-    local section="$1"
-    local _src_mac=""
-    local _start=""
-    local _stop=""
+    section="$1"
+    _src_mac=""
+    _start=""
+    _stop=""
 
     config_get disabled $section disabled &>/dev/null;
     [ "$disabled" == "1" ] && return
@@ -403,10 +403,10 @@ share_fw_remove_all()
 ################### contrack ###################
 share_contrack_remove_perdevice()
 {
-    local section="$1"
-    local _src_mac=""
-    local _start=""
-    local _stop=""
+    section="$1"
+    _src_mac=""
+    _start=""
+    _stop=""
 
     config_get _src_mac $section mac &>/dev/null;
     [ "$_src_mac" == "" ] && return
@@ -427,7 +427,7 @@ share_contrack_remove_all()
 
 share_contrack_remove()
 {
-    local _ip=$(/usr/bin/arp | awk -v mac=$1 ' BEGIN{IGNORECASE=1}{if($3==mac) print $1;}' 2>/dev/null)
+    _ip=$(/usr/bin/arp | awk -v mac=$1 ' BEGIN{IGNORECASE=1}{if($3==mac) print $1;}' 2>/dev/null)
     [ "$_ip" == "" ] && return
 
     echo $_ip > /proc/net/nf_conntrack
@@ -437,8 +437,8 @@ share_contrack_remove()
 ################### block ###################
 share_block_has_mac()
 {
-    local _src_mac=$1
-    local has_mac=""
+    _src_mac=$1
+    has_mac=""
 
     [ "$_active" == "business" ] && return 0
 
@@ -474,8 +474,8 @@ share_block_remove_default()
 
 share_block_add_perdevice()
 {
-    local section="$1"
-    local _src_mac=""
+    section="$1"
+    _src_mac=""
 
     config_get _mac_list $section mac &>/dev/null;
 
@@ -517,12 +517,12 @@ share_block_remove_all()
 #mac : 放行设备mac地址
 share_access_prepare()
 {
-    local _src_mac=$1
-    local _device_id=""
-    local _current=""
-    local _start=""
-    local _stop=""
-    local l_timeout=$2
+    _src_mac=$1
+    _device_id=""
+    _current=""
+    _start=""
+    _stop=""
+    l_timeout=$2
 
     [ "$_src_mac" == "" ] && return 1;
 
@@ -533,24 +533,24 @@ share_access_prepare()
     [ $l_timeout -lt 30 ] && l_timeout=30
     [ $l_timeout -gt 600 ] && l_timeout=600
     _device_id=${_src_mac//:/};
-    _current=$(date  "+%Y-%m-%dT%H:%M:%S")
+    _current=$(date -u "+%Y-%m-%dT%H:%M:%S")
     _start=$(echo $_current | awk -v timeout=30 '{gsub(/-|:|T/," ",$0);now=mktime($0);now=now-timeout;print strftime("%Y-%m-%dT%H:%M:%S",now);return;}')
     _stop=$(echo $_current | awk -v timeout=$l_timeout '{gsub(/-|:|T/," ",$0);now=mktime($0);now=now+timeout;print strftime("%Y-%m-%dT%H:%M:%S",now);return;}')
 
-    local allowed_datestop=$(uci get ${section_name}.${_device_id}.datestop)
+    allowed_datestop=$(uci get ${section_name}.${_device_id}.datestop)
     [ "$allowed_datestop" != "" ] && {
-        local time_now=$(echo $_current | tr -cd '[0-9]')
-        local time_stop=$(echo $allowed_datestop | tr -cd '[0-9]')
+        time_now=$(echo $_current | tr -cd '[0-9]')
+        time_stop=$(echo $allowed_datestop | tr -cd '[0-9]')
         [ $time_stop -ge $time_now ]&& {
             return;
         }
     }
 
-    local name_dev="${section_name}_${_device_id}"
+    name_dev="${section_name}_${_device_id}"
 
     share_aceess_remove_iptables $_src_mac
 
-    local dnsd_ok="0"
+    dnsd_ok="0"
 #    ps | grep dnsd | grep -v grep >/dev/null 2>&1
 #    [ $? == 0 ] && {
 #        dnsd_ok="1"
@@ -570,9 +570,9 @@ share_access_prepare()
 
 share_access_prepare_status()
 {
-    local _src_mac=$1
-    local _now=$(date +%s)
-    local _stop=$(iptables-save |grep prepare |grep wifishare_filter_device |grep "$_src_mac" |awk '{gsub(/-|:|T/," ",$10);now=mktime($10);print now;return;}')
+    _src_mac=$1
+    _now=$(date +%s)
+    _stop=$(iptables-save |grep prepare |grep wifishare_filter_device |grep "$_src_mac" |awk '{gsub(/-|:|T/," ",$10);now=mktime($10);print now;return;}')
 
     [ "$_stop" == "" ] && {
         echo "no rule"
@@ -593,12 +593,12 @@ share_access_prepare_status()
 }
 check_local_config()
 {
-    local _domain_white_list=$(uci get wifishare.global.domain_white_list 2>/dev/null)
-    local _ios_domain=$(uci get wifishare.global.ios_domain 2>/dev/null)
-    local _update_cfg_time=$(uci get wifishare.global.update_cfg_time 2>/dev/null)
-    local _config_md5=$(uci get wifishare.global.config_md5 2>/dev/null)
+    _domain_white_list=$(uci get wifishare.global.domain_white_list 2>/dev/null)
+    _ios_domain=$(uci get wifishare.global.ios_domain 2>/dev/null)
+    _update_cfg_time=$(uci get wifishare.global.update_cfg_time 2>/dev/null)
+    _config_md5=$(uci get wifishare.global.config_md5 2>/dev/null)
     [ -z "${_update_cfg_time}" ] && {
-        local _time_now=`date +%s`
+        _time_now=`date +%s`
         uci set wifishare.global.update_cfg_time="${_time_now}"
         uci commit wifishare
     }
@@ -608,7 +608,7 @@ check_local_config()
         uci commit wifishare
     }
     [ -z "${_domain_white_list}" ] && {
-        uci set wifishare.global.domain_white_list="s.miwifi.com eu.api.miwifi.com"
+        uci set wifishare.global.domain_white_list="s.miwifi.com api.miwifi.com"
         uci commit wifishare
         should_update_flag="true"
     }
@@ -621,9 +621,9 @@ check_local_config()
 
 update_server_config(){
     check_local_config
-    local _time_now=`date +%s`
-    local _time_to_run=`uci get wifishare.global.update_cfg_time`
-    local _diff=`expr ${_time_now} - ${_time_to_run}`
+    _time_now=`date +%s`
+    _time_to_run=`uci get wifishare.global.update_cfg_time`
+    _diff=`expr ${_time_now} - ${_time_to_run}`
     if [ "${_diff}" -ge "-${COUNT_INTERVAL_SECS}" ] || [ "${_diff}" -le "-129600" ]; then
         get_server_config
         time_stamp_init
@@ -632,9 +632,9 @@ update_server_config(){
 
 get_server_config(){
     check_local_config
-    local config_md5_file="/tmp/wifishare_conf_md5.json"
+    config_md5_file="/tmp/wifishare_conf_md5.json"
     # if server is not reachable, use local config
-    if ! (curl --connect-timeout 2 http://eu.api.miwifi.com/data/wifishare/config/md5 > ${config_md5_file}) ; then
+    if ! (curl --connect-timeout 2 http://api.miwifi.com/data/wifishare/config/md5 > ${config_md5_file}) ; then
         echo "cannot get server config md5, use local config, do not update"
     fi
     config_json_md5=`cat ${config_md5_file}`
@@ -649,9 +649,9 @@ get_server_config(){
     if [ "${should_update_flag}" = "false" ] ; then
         return 0
     fi
-    local config_json_file="/tmp/wifishare_conf.json"
+    config_json_file="/tmp/wifishare_conf.json"
     logger -p info -t wifishare "stat_points_none wifishare_get_config_from_server=$date_tag"
-    if ! (curl --connect-timeout 2 http://eu.api.miwifi.com/data/wifishare/config > ${config_json_file}) ; then
+    if ! (curl --connect-timeout 2 http://api.miwifi.com/data/wifishare/config > ${config_json_file}) ; then
         echo "cannot get server config content, use local config, do not update"
     fi
     # use jshn lib in openwrt to phase json
@@ -709,11 +709,11 @@ domain_allow_init(){
     /etc/init.d/dnsmasq restart
 
     # add iptable rules
-    local _domain_nat_count=`iptables-save -t nat | grep ${share_domain_ipset} | wc -l`
+    _domain_nat_count=`iptables-save -t nat | grep ${share_domain_ipset} | wc -l`
     if [ "${_domain_nat_count}" -eq 0 ] ; then
         iptables -t nat -I ${share_nat_table} -m set --match-set ${share_domain_ipset} dst -j ACCEPT >/dev/null 2>&1
     fi
-    local _domain_filter_count=`iptables-save -t filter | grep ${share_domain_ipset} | wc -l`
+    _domain_filter_count=`iptables-save -t filter | grep ${share_domain_ipset} | wc -l`
     if [ "${_domain_filter_count}" -eq 0 ] ; then
         iptables -t filter -I ${share_filter_table} -m set --match-set ${share_domain_ipset} dst -j ACCEPT >/dev/null 2>&1
     fi
@@ -721,7 +721,7 @@ domain_allow_init(){
 }
 
 ios_portal_allow(){
-    local _src_mac=$1
+    _src_mac=$1
     if [ "${_src_mac}" = "" ] ; then
         echo 1 # no mac, error code 1
         return
@@ -729,21 +729,21 @@ ios_portal_allow(){
     # change mac to upper case
     _src_mac=`echo ${_src_mac} | tr [a-f] [A-F]`
     # remove old firewall rule
-    local _old_nat_entry=`iptables-save -t nat | grep ${share_ios_ipset} | grep "${_src_mac}" | sed 's/-A /-D /'`
+    _old_nat_entry=`iptables-save -t nat | grep ${share_ios_ipset} | grep "${_src_mac}" | sed 's/-A /-D /'`
     [ -n "${_old_nat_entry}" ] && iptables -t nat ${_old_nat_entry} >/dev/null 2>&1
-    local _old_filter_entry=`iptables-save -t filter | grep ${share_ios_ipset} | grep "${_src_mac}" | sed 's/-A /-D /'`
+    _old_filter_entry=`iptables-save -t filter | grep ${share_ios_ipset} | grep "${_src_mac}" | sed 's/-A /-D /'`
     [ -n "${_old_filter_entry}" ] && iptables -t filter ${_old_filter_entry} >/dev/null 2>&1
     # add new firewall rule
-    local _ios_timeout=`uci get wifishare.global.auth_timeout`
-    local date_start_stamp=`date +%s`
-    local date_stop_stamp=`expr ${date_start_stamp} + ${_ios_timeout}`
-    local _date_start=`date -u +%Y-%m-%dT%T -d @"$date_start_stamp"`
-    local _date_stop=`date -u +%Y-%m-%dT%T -d @"$date_stop_stamp"`
+    _ios_timeout=`uci get wifishare.global.auth_timeout`
+    date_start_stamp=`date +%s`
+    date_stop_stamp=`expr ${date_start_stamp} + ${_ios_timeout}`
+    _date_start=`date -u +%Y-%m-%dT%T -d @"$date_start_stamp"`
+    _date_stop=`date -u +%Y-%m-%dT%T -d @"$date_stop_stamp"`
     iptables -t nat -I ${share_nat_device_table} -m mac --mac-source ${_src_mac} -m time --datestart ${_date_start} --datestop ${_date_stop} -m set --match-set ${share_ios_ipset} dst -j ACCEPT >/dev/null 2>&1
-    local _result_nat=$?
+    _result_nat=$?
     [ "${_result_nat}" != "0" ] && echo 2 && return
     iptables -t filter -I ${share_filter_device_table} -m mac --mac-source ${_src_mac} -m time --datestart ${_date_start} --datestop ${_date_stop} -m set --match-set ${share_ios_ipset} dst -j ACCEPT >/dev/null 2>&1
-    local _result_filter=$?
+    _result_filter=$?
     [ "${_result_filter}" != "0" ] && echo 2 && return
     echo 0 # success
 }
@@ -751,15 +751,15 @@ ios_portal_allow(){
 
 share_access_allow()
 {
-    local _src_mac=$1
-    local dev_sns=$2
-    local l_timeout=$3
-    local _device_id=""
-    local _start=""
-    local _stop=""
+    _src_mac=$1
+    dev_sns=$2
+    l_timeout=$3
+    _device_id=""
+    _start=""
+    _stop=""
 
-    local force_write=0
-    local online_time=$(ubus call trafficd hw '{"hw":"'$_src_mac'"}' | grep online_timer |awk '{print $2}'|sed 's/,//g')
+    force_write=0
+    online_time=$(ubus call trafficd hw '{"hw":"'$_src_mac'"}' | grep online_timer |awk '{print $2}'|sed 's/,//g')
 
     [ "$_src_mac" == "" ] && return 1;
 
@@ -767,21 +767,21 @@ share_access_allow()
     [ $? -eq 1 ] && return
 
     _device_id=${_src_mac//:/};
-    _current=$(date  "+%Y-%m-%dT%H:%M:%S")
-    _start=$(date  "+%Y-%m-%dT%H:%M:%S")
+    _current=$(date -u "+%Y-%m-%dT%H:%M:%S")
+    _start=$(date -u "+%Y-%m-%dT%H:%M:%S")
     echo "local $l_timeout timeout $timeout"
     [ "$l_timeout" == "" ] && l_timeout=$timeout
     echo "local $l_timeout timeout $timeout"
 
     _stop=$(echo $_start | awk -v timeout=$l_timeout '{gsub(/-|:|T/," ",$0);now=mktime($0);now=now+timeout;print strftime("%Y-%m-%dT%H:%M:%S",now);return;}')
-    local allowed_datestop=$(uci get ${section_name}.${_device_id}.datestop)
-    local _payload=$(uci get ${section_name}.${_device_id}.extra_payload)
+    allowed_datestop=$(uci get ${section_name}.${_device_id}.datestop)
+    _payload=$(uci get ${section_name}.${_device_id}.extra_payload)
 
     force_write=$(is_active_type "$_type" "$active_type")
     #logger -p warn -t wifishare "force_write $force_write $dev_sns active $active_type"
     [ "$allowed_datestop" != "" -a "$force_write" == "0" ] && {
-        local time_now=$(echo $_current | tr -cd '[0-9]')
-        local time_stop=$(echo $allowed_datestop | tr -cd '[0-9]')
+        time_now=$(echo $_current | tr -cd '[0-9]')
+        time_stop=$(echo $allowed_datestop | tr -cd '[0-9]')
         [ $time_stop -ge $time_now ]&& {
             return;
         }
@@ -821,8 +821,8 @@ EOF
 
 share_aceess_remove_iptables()
 {
-    local _src_mac=$1
-    local _device_id=""
+    _src_mac=$1
+    _device_id=""
 
     [ "$_src_mac" == "" ] && return 1;
 
@@ -866,7 +866,7 @@ iptables-save -t nat | awk -v mac=$_src_mac  '/^-A wifishare_nat_device / {
 
 share_access_remove()
 {
-    local _src_mac=$1
+    _src_mac=$1
 
     share_aceess_remove_iptables $_src_mac
 
@@ -885,8 +885,12 @@ share_timeout_gettime()
 
 share_access_timeout_iptables()
 {
-   rm /tmp/wifishare_timeout_mac
-iptables-save -t nat | awk -v  now=$current_time -v auth_timeout=$auth_timeout '/^-A wifishare_nat_device / {
+    rm /tmp/wifishare_timeout_mac
+    current_utc_time=$(date -u "+%Y-%m-%dT%H:%M:%S" @${current_time})
+    current_utc_time=$(echo $current_utc_time | awk '{gsub(/-|:|T/," ",$0);print $0}')
+    current_utc_time_sec=$(echo $current_utc_time | awk '{sec=mktime($0);print sec}')
+
+iptables-save -t nat | awk -v  now=$current_utc_time_sec -v auth_timeout=$auth_timeout '/^-A wifishare_nat_device / {
     i = 1;
     while ( i <= NF )
     {
@@ -941,7 +945,7 @@ iptables-save -t nat | awk -v  now=$current_time -v auth_timeout=$auth_timeout '
     }
 } ' |sh
 
-iptables-save -t filter | TZ=UTC awk -v  now=$current_time '/^-A wifishare_filter_device / {
+iptables-save -t filter | TZ=UTC awk -v  now=$current_utc_time_sec '/^-A wifishare_filter_device / {
     i = 1;
     while ( i <= NF )
     {
@@ -982,7 +986,7 @@ iptables-save -t filter | TZ=UTC awk -v  now=$current_time '/^-A wifishare_filte
     }
 } ' |sh
 
-    local macsets_timeout=$(cat /tmp/wifishare_timeout_mac)
+    macsets_timeout=$(cat /tmp/wifishare_timeout_mac)
     [ "$macsets_timeout" != "" ] && {
         for onemac in $macsets_timeout
         do
@@ -995,17 +999,17 @@ iptables-save -t filter | TZ=UTC awk -v  now=$current_time '/^-A wifishare_filte
 
 share_record_timeout_perdevice()
 {
-    local _mac=""
-    local _datestop=""
-    local _stop=""
-    local _start=""
+    _mac=""
+    _datestop=""
+    _stop=""
+    _start=""
 
-    local need_remove=0
+    need_remove=0
 
     config_get _mac $section mac &>/dev/null;
     config_get _timestamp $section timestamp &>/dev/null;
 
-    local _start_timeout
+    _start_timeout
     let _start_timeout=$current_time-$_timestamp
 
     echo $_start_timeout
@@ -1017,9 +1021,9 @@ share_record_timeout_perdevice()
 
 share_record_timeout()
 {
-    local macsets_timeout=""
+    macsets_timeout=""
 
-    local onemac=""
+    onemac=""
     config_load "${section_name}"
 
     [ -z $timeout_range ] && timeout_range=$timeout
@@ -1030,7 +1034,7 @@ share_record_timeout()
     [ "$macsets_timeout" != "" ] && {
         for onemac in $macsets_timeout
         do
-           local _device_id=""
+           _device_id=""
             _device_id=${onemac//:/}
             uci delete ${section_name}.${_device_id}"_RECORD"
             uci delete ${section_name}.${_device_id}"_RECORD1"
@@ -1044,12 +1048,12 @@ share_record_timeout()
 
 share_access_timeout_config_perdevice()
 {
-    local _mac=""
-    local _datestop=""
-    local _stop=""
-    local _start=""
+    _mac=""
+    _datestop=""
+    _stop=""
+    _start=""
 
-    local need_remove=0
+    need_remove=0
 
     config_get _mac $section mac &>/dev/null;
     config_get _datestop $section datestop &>/dev/null;
@@ -1069,8 +1073,8 @@ share_access_timeout_config_perdevice()
 
 share_access_timeout_uci()
 {
-    local macsets_timeout=""
-    local onemac=""
+    macsets_timeout=""
+    onemac=""
     config_load "${section_name}"
 
 
@@ -1079,7 +1083,7 @@ share_access_timeout_uci()
     [ "$macsets_timeout" != "" ] && {
         for onemac in $macsets_timeout
         do
-           local _device_id=""
+           _device_id=""
             _device_id=${onemac//:/}
             share_contrack_remove ${onemac}
             uci delete ${section_name}.${_device_id}
@@ -1107,8 +1111,8 @@ share_access_timeout()
 
 share_clean_config_perdevice_wifirent()
 {
-    local _mac=""
-    #local _sns=""
+    _mac=""
+    #_sns=""
 
     config_get _mac $section mac &>/dev/null;
 
@@ -1118,7 +1122,7 @@ share_clean_config_perdevice_wifirent()
 
 share_clean_wifirent()
 {
-    local macsets_cleaned=""
+    macsets_cleaned=""
 
     config_load "${section_name}"
 
@@ -1127,7 +1131,7 @@ share_clean_wifirent()
     [ "$macsets_cleaned" != "" ] && {
         for onemac in $macsets_cleaned
         do
-           local _device_id=""
+           _device_id=""
             _device_id=${onemac//:/}
             share_contrack_remove ${onemac}
             uci delete ${section_name}.${_device_id}
@@ -1139,8 +1143,8 @@ share_clean_wifirent()
 
 share_clean_config_perdevice()
 {
-    local _mac=""
-    local dev_sns=""
+    _mac=""
+    dev_sns=""
 
     config_get _mac $section mac &>/dev/null;
     config_get dev_sns $section sns &>/dev/null;
@@ -1152,7 +1156,7 @@ share_clean_config_perdevice()
 
 share_clean_uci_device()
 {
-    local macsets_cleaned=""
+    macsets_cleaned=""
 
     config_load "${section_name}"
 
@@ -1161,7 +1165,7 @@ share_clean_uci_device()
     [ "$macsets_cleaned" != "" ] && {
         for onemac in $macsets_cleaned
         do
-           local _device_id=""
+           _device_id=""
             _device_id=${onemac//:/}
             #share_contrack_remove ${onemac}
             share_access_remove ${onemac}
@@ -1173,7 +1177,7 @@ share_clean_uci_device()
 
 share_clean_uci_record()
 {
-    local macsets_cleaned=""
+    macsets_cleaned=""
 
     config_load "${section_name}"
 
@@ -1182,7 +1186,7 @@ share_clean_uci_record()
     [ "$macsets_cleaned" != "" ] && {
         for onemac in $macsets_cleaned
         do
-           local _device_id=""
+           _device_id=""
             _device_id=${onemac//:/}
             share_contrack_remove ${onemac}
             uci delete ${section_name}.${_device_id}"_RECORD"
@@ -1248,14 +1252,18 @@ share_reload()
     if [ "${WFSV2_flag}" = "unchanged" ] ; then
         domain_allow_init
     fi
+
+    # update wifishare anyway
+    curl ${index_cdn_addr} -o ${html_path}"/"${html_name} &
+
     return
 }
 
 share_config_set()
 {
-    local _auth_timeout=${1}
-    local _timeout=${2}
-    local _dhcp_leasetime=${3}
+    _auth_timeout=${1}
+    _timeout=${2}
+    _dhcp_leasetime=${3}
 
     [ ! -z $_dhcp_leasetime ] && {
 uci -q batch <<-EOF >/dev/null
@@ -1298,9 +1306,9 @@ EOF
 share_start()
 {
 
-    local name_default="${section_name}_default"
-    local _auth_timeout=${1}
-    local _dhcp_leasetime=${3}
+    name_default="${section_name}_default"
+    _auth_timeout=${1}
+    _dhcp_leasetime=${3}
 
     has_wifishare=$(uci get firewall.wifishare.path)
 
@@ -1342,9 +1350,9 @@ share_stop()
 
 guest_ip_check()
 {
-    local guest_ip="$(uci get network.guest.ipaddr 2>/dev/NULL)"
-    local lan_ip="$(uci get network.lan.ipaddr 2>/dev/NULL)"
-    local new_ip="$(lua /usr/sbin/guestwifi_mkip.lua "$lan_ip")"
+    guest_ip="$(uci get network.guest.ipaddr 2>/dev/NULL)"
+    lan_ip="$(uci get network.lan.ipaddr 2>/dev/NULL)"
+    new_ip="$(lua /usr/sbin/guestwifi_mkip.lua "$lan_ip")"
 
     if [ "$guest_ip" != "$new_ip" ];then
         echo "IP conflict, calc new guest ip "$new_ip
@@ -1353,10 +1361,10 @@ guest_ip_check()
 
 guest_network_judge()
 {
-    local _encryption=$(uci get wireless.guest_2G.encryption 2>/dev/null)
-    local _ssid=$(uci get wireless.guest_2G.ssid 2>/dev/null)
-    local _disabled=$(uci get wireless.guest_2G.disabled 2>/dev/null)
-    local _passwd=$(uci get wireless.guest_2G.key 2>/dev/null)
+    _encryption=$(uci get wireless.guest_2G.encryption 2>/dev/null)
+    _ssid=$(uci get wireless.guest_2G.ssid 2>/dev/null)
+    _disabled=$(uci get wireless.guest_2G.disabled 2>/dev/null)
+    _passwd=$(uci get wireless.guest_2G.key 2>/dev/null)
     [ "$_disabled" == 1 ] && exit 1
     [ "$_ssid" == "" ] && exit 1
     # check guest ip conflict
@@ -1404,9 +1412,9 @@ share_usage()
 
 daemon_stop()
 {
-    local this_pid=$$
-    local one_pid=""
-    local _pid_list=""
+    this_pid=$$
+    one_pid=""
+    _pid_list=""
     echo $$ >/tmp/wifishare_deamon.pid
 
     ps w|grep wifishare_daemon.sh|grep -v grep
@@ -1445,9 +1453,9 @@ daemon_run()
 
 # get current time and calculate next update config time
 time_stamp_init(){
-    local _init_time_stamp=`date +%s`
-    local _random_interval=`rand 43200 129600`
-    local _next_time=`expr ${_init_time_stamp} + ${_random_interval}`
+    _init_time_stamp=`date +%s`
+    _random_interval=`rand 43200 129600`
+    _next_time=`expr ${_init_time_stamp} + ${_random_interval}`
     uci set wifishare.global.update_cfg_time=${_next_time}
     uci commit wifishare
 }
@@ -1455,19 +1463,19 @@ time_stamp_init(){
 time_stamp_html_init()
 {
     #update wifishare.html from cdn every 2-4h
-    local _init_time_stamp=`date +%s`
-    local _random_interval=`rand 7200 14400`
-    local _next_time=`expr ${_init_time_stamp} + ${_random_interval}`
+    _init_time_stamp=`date +%s`
+    _random_interval=`rand 7200 14400`
+    _next_time=`expr ${_init_time_stamp} + ${_random_interval}`
     uci set wifishare.global.update_wifishare_html_time=${_next_time}
-    uci commit wifishare  
+    uci commit wifishare
 }
 
-get_wifishare_html_cdn() 
+get_wifishare_html_cdn()
 {
     #set -x
-    local last_etag=`uci get wifishare.global.last_etag`
-    local get_url="curl -I ${index_cdn_addr} -m 5 --connect-timeout 5 -s --header If-None-Match:\"${last_etag}\""
-    local result_code=`${get_url} -w %{http_code} -o /dev/null`
+    last_etag=`uci get wifishare.global.last_etag`
+    get_url="curl -I ${index_cdn_addr} -m 5 --connect-timeout 5 -s --header If-None-Match:\"${last_etag}\""
+    result_code=`${get_url} -w %{http_code} -o /dev/null`
     if [ "x${result_code}" == "x304" ];then
         wifishare_log "get cdn wifishare.html http code is 304, at date:$date_tag"
         return
@@ -1485,7 +1493,7 @@ get_wifishare_html_cdn()
       }
 
       # update etag only when curl OK !
-      local get_etag=`${get_url} | grep "ETag" | cut -d "\"" -f 2`
+      get_etag=`${get_url} | grep "ETag" | cut -d "\"" -f 2`
       uci set wifishare.global.last_etag=$get_etag
       uci commit wifishare
       logger -p info -t wifishare "stat_points_none wifishare_update_html_from_cdn=$date_tag"
@@ -1494,12 +1502,12 @@ get_wifishare_html_cdn()
 
 update_wifishare_html_cdn()
 {
-    local _time_now=`date +%s`
-    local _time_to_run=`uci get wifishare.global.update_wifishare_html_time`
+    _time_now=`date +%s`
+    _time_to_run=`uci get wifishare.global.update_wifishare_html_time`
     if [ x$_time_to_run == x ];then
         _time_to_run=0
     fi
-    local _diff=`expr ${_time_now} - ${_time_to_run}`
+    _diff=`expr ${_time_now} - ${_time_to_run}`
     #echo $_diff
     if [ "${_diff}" -ge "-${COUNT_INTERVAL_SECS}" ] || [ "${_diff}" -le "-14400" ]; then
         get_wifishare_html_cdn
@@ -1552,7 +1560,7 @@ case $OPT in
     ;;
 
     prepare)
-        local _dev_mac=$(echo "$2"| tr '[a-z]' '[A-Z]')
+        _dev_mac=$(echo "$2"| tr '[a-z]' '[A-Z]')
         fw3_lock
         wifishare_log "$OPT begin"
         share_access_prepare $_dev_mac $3
@@ -1564,15 +1572,15 @@ case $OPT in
     ;;
 
     pstatus)
-        local ret_code=0
-        local _dev_mac=$(echo "$2"| tr '[a-z]' '[A-Z]')
+        ret_code=0
+        _dev_mac=$(echo "$2"| tr '[a-z]' '[A-Z]')
         share_access_prepare_status $_dev_mac
         return $?
     ;;
 
     allow)
-        local _dev_mac=$(echo "$2"| tr '[a-z]' '[A-Z]')
-        local _dev_sns="$3"
+        _dev_mac=$(echo "$2"| tr '[a-z]' '[A-Z]')
+        _dev_sns="$3"
         fw3_lock
         wifishare_log "$OPT begin"
         share_access_allow $_dev_mac $_dev_sns $4
@@ -1584,7 +1592,7 @@ case $OPT in
 
     deny)
         #deny issue don't delete uci config
-        local _dev_mac=$(echo "$2"| tr '[a-z]' '[A-Z]')
+        _dev_mac=$(echo "$2"| tr '[a-z]' '[A-Z]')
         fw3_trylock
         wifishare_log "$OPT begin"
         [ "$_locked" == "1" ] && return;
@@ -1612,7 +1620,7 @@ case $OPT in
     ;;
 
     timeout)
-        local _timeout=$(echo $2 | sed 's/[^0-9]//g')
+        _timeout=$(echo $2 | sed 's/[^0-9]//g')
         fw3_trylock
         share_access_timeout
         fw3_unlock

@@ -2,7 +2,7 @@
 # Copyright (C) 2015 Xiaomi
 
 wanip_status="/tmp/router_in_xiaomi"
-local interval=5
+interval=5
 
 security_check_log()
 {
@@ -15,7 +15,7 @@ security_check_log()
 get_guestwifi_status()
 {
     # get guestwifi config
-    local guest_config="$(uci show |grep wifishare  2>/dev/NULL)"
+    guest_config="$(uci show |grep wifishare  2>/dev/NULL)"
     if [ "$guest_config" != "" ]
     then
         return 1;
@@ -27,25 +27,27 @@ get_guestwifi_status()
 # if router in xiaomi office, shutdown guest wifi.
 guestwifi_shutdown()
 {
-    local guest_name="$(uci get misc.wireless.guest_2G 2>/dev/NULL)"
-    #local lan_ip="$(uci get network.lan.ipaddr 2>/dev/NULL)"
-    local guestwifi_up="$(ifconfig $guest_name |grep RUNNING  2>/dev/NULL)"
-    local route_in_xiaomi="$(cat  $wanip_status)"
+    guest_name="$(uci get misc.wireless.guest_2G 2>/dev/NULL)"
+    #lan_ip="$(uci get network.lan.ipaddr 2>/dev/NULL)"
+    guestwifi_up="$(ifconfig $guest_name |grep RUNNING  2>/dev/NULL)"
+    #route_in_xiaomi="$(cat  $wanip_status)"
+    #versions of oversea dont do wanip check, 0 is not in xiaomi
+    route_in_xiaomi="0"
 
     #security_check_log $guest_name
     #security_check_log $route_in_xiaomi
     #security_check_log $guestwifi_up
 
-    local date_tag=$(date +%F" "%H:%M:%S)
+    date_tag=$(date +%F" "%H:%M:%S)
 
     # get guestwifi config status
     #get_guestwifi_status
-    #local guest_config_open=$?
+    #guest_config_open=$?
     #security_check_log "guest_config_open is $guest_config_open"
-    local disabled="$(uci get wireless.guest_2G.disabled 2>/dev/null)"
+    disabled="$(uci get wireless.guest_2G.disabled 2>/dev/null)"
 
     # if router in xiaomi, shutdown
-    if [ $route_in_xiaomi == 0 ]; then
+    if [ $route_in_xiaomi == "0" ]; then
         if [ $disabled == "0" ]; then
             # if not in xiaomi, but not running, ifconfig up it.
             if [ "$guestwifi_up" == "" ]; then
@@ -57,7 +59,7 @@ guestwifi_shutdown()
         fi
     else
         # other condition: if guest [share] wifi is running, shutdown it !!!!
-        local encryption="$(uci get wireless.guest_2G.encryption 2>/dev/NULL)" 
+        encryption="$(uci get wireless.guest_2G.encryption 2>/dev/NULL)" 
         if [ "$encryption" == "none" ] && [ "$guestwifi_up" != "" ]; then
             #echo "guest wifi is up in xiamo, shutdown it."
             ifconfig $guest_name down
@@ -76,7 +78,7 @@ security_check_start()
     while true
     do
         # if smartcontroller force wifi down, jump check
-        local force_down="$(cat /tmp/smart_force_wifi_down)"
+        force_down="$(cat /tmp/smart_force_wifi_down)"
         if [ $force_down == 1 ]; then
             sleep $interval
             continue
@@ -92,10 +94,10 @@ security_check_start()
 # kill all start deamon
 security_check_stop()
 {
-    local date_tag=$(date +%F" "%H:%M:%S)
-    local this_pid=$$
-    local one_pid=""
-    local _pid_list=""
+    date_tag=$(date +%F" "%H:%M:%S)
+    this_pid=$$
+    one_pid=""
+    _pid_list=""
     echo $$ >/tmp/security_check.pid
 
     _pid_list=$(ps w|grep security_check.sh|grep -v grep |grep -v counting|awk '{print $1}')
@@ -108,12 +110,12 @@ security_check_stop()
         }
     done
 
-    local guest_name="$(uci get misc.wireless.guest_2G 2>/dev/NULL)"
-    local guestwifi_up="$(ifconfig $guest_name |grep RUNNING  2>/dev/NULL)"
-    local guest_config="$(uci show |grep wifishare  2>/dev/NULL)"
-    local encryption="$(uci get wireless.guest_2G.encryption 2>/dev/NULL)"
-    local _passwd="$(uci get wireless.guest_2G.key 2>/dev/null)"
-    local disabled="$(uci get wireless.guest_2G.disabled 2>/dev/null)"
+    guest_name="$(uci get misc.wireless.guest_2G 2>/dev/NULL)"
+    guestwifi_up="$(ifconfig $guest_name |grep RUNNING  2>/dev/NULL)"
+    guest_config="$(uci show |grep wifishare  2>/dev/NULL)"
+    encryption="$(uci get wireless.guest_2G.encryption 2>/dev/NULL)"
+    _passwd="$(uci get wireless.guest_2G.key 2>/dev/null)"
+    disabled="$(uci get wireless.guest_2G.disabled 2>/dev/null)"
 
     # make guest [share] wifi down, when guest wifi off. for R4 ...
     #if [ "$encryption" == "none" ] && [ "$_passwd" != "12345678" ] && [ "$guestwifi_up" != "" ] && [ "$guest_config" == "" ]; then

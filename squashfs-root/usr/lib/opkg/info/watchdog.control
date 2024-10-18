@@ -1,0 +1,8 @@
+Package: watchdog
+Version: 1
+Depends: libc
+Source: package/mtk/applications/watchdog
+Section: Ralink Properties
+Architecture: mipsel_24kc
+Installed-Size: 1973
+Description:  MTK APSoC Watchdog Daemon

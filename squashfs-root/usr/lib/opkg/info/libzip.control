@@ -1,0 +1,8 @@
+Package: libzip
+Version: 0.10.1-1
+Depends: libc, zlib
+Source: package/feeds/packages/libzip
+Section: libs
+Architecture: mipsel_24kc
+Installed-Size: 18682
+Description:  C library for reading, creating, and modifying zip archives

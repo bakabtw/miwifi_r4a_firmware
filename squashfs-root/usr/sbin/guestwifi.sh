@@ -243,6 +243,7 @@ guest_start()
     /etc/init.d/network restart
     /etc/init.d/dnsmasq restart
     /etc/init.d/firewall reload
+    [ -x /etc/init.d/hwnat ] && /etc/init.d/hwnat restart
 
     return 0
 }

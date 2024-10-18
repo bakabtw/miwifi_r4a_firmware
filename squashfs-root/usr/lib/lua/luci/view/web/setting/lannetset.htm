@@ -8,6 +8,7 @@ local ver = require("xiaoqiang.XQVersion").webVersion
 <title><%:小米路由器%></title>
 <meta name="viewport" content="width=1200">
 <link href="<%=resource%>/web/css/bc.css?v=<%=ver%>" rel="stylesheet">
+<link href="<%=resource%>/web/css/layout.css?v=<%=ver%>" rel="stylesheet">
 <link href="<%=resource%>/web/css/proset.css?v=<%=ver%>" rel="stylesheet">
 </head>
 <body>
@@ -28,14 +29,14 @@ local ver = require("xiaoqiang.XQVersion").webVersion
                         <div class="form-item">
                             <label class="k"><%:开始IP%></label>
                             <span class="v">
-                                <span class="ipprefix">192.168.31.</span><input type="text" class="ipt-text iplimit" name="start" id="startip" reqMsg="<%:开始IP%>" datatype="n-3" minValue="2" maxValue="254" style="width:128px"  maxlength="3">
+                                <span class="ipprefix">192.168.31.</span><input type="text" class="ipt-text iplimit" name="start" id="startip" reqMsg="<%:开始IP%>" datatype="n-3" minValue="2" maxValue="254" style="width:228px"  maxlength="3">
                             </span>
                             <em class="t"></em>
                         </div>
                         <div class="form-item">
                             <label class="k"><%:结束IP%></label>
                             <span class="v">
-                                <span class="ipprefix">192.168.31.</span><input type="text" class="ipt-text iplimit" name="end" id="endip" reqMsg="<%:结束IP%>" datatype="nrange-3" fromNEl="startip"  minValue="2" maxValue="254" style="width:128px"  maxlength="3">
+                                <span class="ipprefix">192.168.31.</span><input type="text" class="ipt-text iplimit" name="end" id="endip" reqMsg="<%:结束IP%>" datatype="nrange-3" fromNEl="startip"  minValue="2" maxValue="254" style="width:228px"  maxlength="3">
                             </span>
                             <em class="t"></em>
                         </div>
@@ -72,13 +73,12 @@ local ver = require("xiaoqiang.XQVersion").webVersion
                 </form>
             </div>
         </div>
-
+        <%include("web/setting/dhcp_ip_mac")%>
     </div>
 
     <%include("web/inc/footer")%>
 
 </div>
-<%include("web/inc/g.js")%>
 <%include("web/inc/reboot.js")%>
 <script>
 (function(){

@@ -16,15 +16,9 @@ start() {
 
 
 stop() {
-    killall syslog-ng.helper
-    killall stat_points.cron
-    sleep 1
-    pidof syslog-ng.helper >/dev/null && killall -9 syslog-ng.helper
-    pidof stat_points.cron >/dev/null && killall -9 stat_points.cron
-    sleep 1
-    /usr/sbin/syslog_sync.sh
+	/usr/sbin/syslog_sync.sh
 
-    return 0
+	return 0
 }
 
 restart() {

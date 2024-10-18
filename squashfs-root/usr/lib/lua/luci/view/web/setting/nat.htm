@@ -10,6 +10,7 @@ local ip = XQLanWanUtil.getLanWanInfo("lan")["ipv4"][1]["ip"]
 <title><%:小米路由器%></title>
 <meta name="viewport" content="width=1200">
 <link href="<%=resource%>/web/css/bc.css?v=<%=ver%>" rel="stylesheet">
+<link href="<%=resource%>/web/css/layout.css?v=<%=ver%>" rel="stylesheet">
 <link href="<%=resource%>/web/css/nat.css?v=<%=ver%>" rel="stylesheet">
 </head>
 <body>
@@ -112,7 +113,7 @@ local ip = XQLanWanUtil.getLanWanInfo("lan")["ipv4"][1]["ip"]
     </div>
 
     <div class="form-item form-item-input input-ip">
-        <label for="ip" class="k"style="width:20em;"><%:内部IP地址：%><span class="iphere"></span></label>
+        <label for="ip" class="k"><%:内部IP地址：%><span class="iphere"></span></label>
         <span class="v"><input type="text" name="ip" value="" class="ipt-text no-init" style="margin-left: 219px;width: 34px;" /></span>
         <em class="t"></em>
     </div>

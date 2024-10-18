@@ -1,5 +1,5 @@
 #!/usr/bin/env lua
-local posix = require "Posix"
+local posix = require "posix"
 local json = require "json"
 local net_tools = require "net_tools"
 local ubus = require "ubus"

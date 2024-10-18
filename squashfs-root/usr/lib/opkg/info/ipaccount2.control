@@ -1,0 +1,8 @@
+Package: ipaccount2
+Version: 0.2-1
+Depends: libc, lua, libnl-tiny
+Source: package/miwifi/trafficd
+Section: net
+Architecture: mipsel_24kc
+Installed-Size: 6037
+Description:  ip account

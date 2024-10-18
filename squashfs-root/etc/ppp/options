@@ -1,4 +1,6 @@
-logfile /tmp/pppoe.log
+#debug
+logfile /tmp/ppp/pppoe.log
+
 noipdefault
 noaccomp
 nopcomp
@@ -9,7 +11,3 @@ lcp-echo-failure 3
 lcp-echo-interval 10
 lcp-echo-adaptive
 lcp-max-terminate 1
-
-+ipv6
-ipv6 ,
-

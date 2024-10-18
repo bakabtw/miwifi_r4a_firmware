@@ -2,7 +2,7 @@
 
 local io = require "io"
 local socket = require "socket"
-local px = require "Posix"
+local px = require "posix"
 local devs
 local g_interval = 1
 local printf=print
@@ -345,6 +345,16 @@ function main()
             end
         end
         print_ender()
+        if batch_mode then
+            for _,v in pairs(devs) do
+                print("--------------------------------------")
+                print("::::::::::::tc qdisc show dev " .. v)
+                os.execute("tc qdisc show dev " .. v)
+                print("::::::::::::tc filter show dev " .. v)
+                os.execute('tc filter show dev ' .. v)
+                print("--------------------------------------")
+            end
+        end
         sleep(g_interval)
     end
 end

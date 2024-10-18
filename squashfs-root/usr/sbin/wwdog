@@ -1,26 +1,152 @@
 #!/bin/sh
-check_factory_mode() {
-    ft_mode=`cat /proc/xiaoqiang/ft_mode`
-    if [ "$ft_mode" = "1" ]; then
-	exit 0
-    fi
+# check lan and wan
+
+log() {
+    msg="$@"
+    [ -z "$msg" ] && return 0
+
+    DATE="$(date)"
+    logger -p9 -t "wwdog[${$}]" "$msg"
+    return 0
 }
 
+#return value 1: gw ip unreachable;
+#return value 0: gw ip exists and reachable;
+bridgeap_check_gw()
+{
+    local bridgeap_gw_ip=`uci get network.lan.gateway`
+
+    [ -z $bridgeap_gw_ip ] && return 0;
+
+    bridgeap_gw_ip_noexist=`arping $bridgeap_gw_ip -I br-lan -c 3 &>/dev/null; echo $?`;
+    return $bridgeap_gw_ip_noexist;
+}
+
+bridgeap_lan_restart()
+{
+    log "try restart lan."
+    for i in `seq 1 10`
+    do
+       /usr/sbin/dhcp_apclient.sh restart
+       [ $? = '0' ] && return 0;
+
+       log "restart lan fail, try again in $i seconds."
+       sleep $i
+    done
+
+    return 1;
+}
+
+ap_lan_check()
+{
+    log "ap_lan_check check in ap mode."
+    bridgeap_check_gw
+    [ $? = '0' ] && return;
+
+    # in bridge ap mode and gateway unreachable, we had to run dhcp renew issue;
+    # if can't renew ipaddr, script should  exit. otherwise, restart network && lan
+    log "gateway changed, try dhcp renew."
+    lan_ipaddr_ori=`uci get network.lan.ipaddr 2>/dev/null`
+
+    /usr/sbin/dhcp_apclient.sh start br-lan;
+    lan_ipaddr_now=`uci get network.lan.ipaddr 2>/dev/null`
+    [ "$lan_ipaddr_ori" = "$lan_ipaddr_now" ] && return;
+    matool --method setKV --params "ap_lan_ip" "$lan_ipaddr_now"
+
+    log "gateway changed, try lan restart"
+    bridgeap_lan_restart
+    log "gateway changed, lan ip changed from $lan_ipaddr_ori to $lan_ipaddr_now."
+    /etc/init.d/network restart
+}
+
+wan_check()
+{
+    rt_mode=$(uci -q get network.wan.proto)
+    case $rt_mode in
+    "pppoe")
+        # need check if ppp is alive
+        if ! ifconfig pppoe-wan; then
+            if ! pidof pppd; then
+                log "ERROR: pppoe-wan interface is NULL and pppd is not up, trigger PPPOE-wan to re-UP."
+                ifup wan
+            fi
+        else
+            network_is_up wan || return
+            if ! pidof pppd; then
+                log "ERROR: pppd is not up, trigger PPPOE-wan to re-UP."
+                ifup wan
+            else
+                # only work in platform MTK
+                wan_port=$(uci -q get misc.sw_reg.sw_wan_port)
+                [ $wan_port = $PORT_NUM -a $LINK_STATUS = "linkdown" ] && {
+                    . /lib/xq-misc/phy_switch.sh
+                    if ! sw_wan_link_detect; then
+                        log "ERROR: pppoe-wan interface is UP, pppd is UP, but port wan is unplugged."
+                        ifup wan
+                    fi
+                }
+            fi
+        fi
+        ;;
+
+    "dhcp")
+        network_is_up wan || return
+
+        network_get_device dev wan
+        network_get_gateway gw wan
+
+        [ -z "$dev" -o -z "$gw" ] && return
+
+        if ! arping -f -q -c 3 -w 2 -I "$dev" "$gw"; then
+            log "ERROR: DHCP gateway is not up, trigger DHCP-wan to re-UP."
+            ifup wan
+        fi
+        ;;
+
+    "static")
+        return
+        ;;
+    *)
+        echo "not supported."
+        ;;
+    esac
+}
+
+# check call from taskdaemon, only work in platform MTK
+if [ $# -eq 1 ] && [ $1 == 'taskdaemon' ]
+then
+    sleep 3
+fi
+
+#skip if boot is not done.
+bootcheck=$(cat /proc/xiaoqiang/boot_status)
+[ "$bootcheck" != "3" ] && exit 0
+
 # skip wan monitor in FT mode
-check_factory_mode
+ft_mode=$(cat /proc/xiaoqiang/ft_mode)
+[ "$ft_mode" = "1" ] && exit 0
 
 # check link carrier
 . /lib/functions/network.sh
-network_is_up wan || exit 0
-# don't bother with PPPoE
-network_get_device dev wan
-network_get_physdev pdev wan
-[ "$pdev" == "$dev" ] || exit 0
 
-# dhcp or static
-network_get_gateway gw wan
-if ! arping -f -q -c 3 -w 2 -I "$dev" "$gw"; then
-    ifup wan
-fi
+mode=$(uci -q get xiaoqiang.common.NETMODE)
+case $mode in
+"wifiapmode")
+    ap_lan_check
+    exit 0
+    ;;
+"lanapmode")
+    ap_lan_check
+    exit 0
+    ;;
+"whc_re")
+    ap_lan_check
+    exit 0
+    ;;
+*)
+    wan_check 
+    exit 0
+    ;;
+esac
+
 exit 0
-

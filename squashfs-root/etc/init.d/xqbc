@@ -1,43 +1,22 @@
 #!/bin/sh /etc/rc.common
 
-START=99
+START=98
 #STOP=99
 
-#export command line for /usr/sbin/supervisord
-export PROCLINE='/usr/sbin/xqbc 988'
-#
+USE_PROCD=1
+PROG=/usr/sbin/xqbc
 
-export EXTRA_HELP="     status  Status the service"
-export EXTRA_COMMANDS="status"
-
-start() {
+start_service() {
 	local wifimode
 	netmode=`uci -q -S get xiaoqiang.common.NETMODE`
-	if [ "$netmode" != "wifiapmode" -a "$netmode" != "lanapmode" ]; then
-		return 0
-	fi
-        /usr/sbin/supervisord start
-        return $?
+	if [ "$netmode" = "wifiapmode" -o "$netmode" = "lanapmode" ]; then
+    		[ -f "$PROG" ] && {
+    		procd_open_instance
+    		procd_set_param command "$PROG" 988
+    		procd_set_param respawn
+    		procd_close_instance
+    		}
+    	fi
 }
 
-restart() {
-        stop
-        sleep 1
-        start
-        return $?
-}
-
-shutdown() {
-        stop
-        return $?
-}
-
-stop() {
-        /usr/sbin/supervisord stop
-        return $?
-}
-status() {
-        /usr/sbin/supervisord status
-        return $?
-}
 #

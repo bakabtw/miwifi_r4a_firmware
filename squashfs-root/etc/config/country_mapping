@@ -42,7 +42,7 @@ config mapping IE
 	option timezone 'IST-1GMT0,M10.5.0,M3.5.0/1'
 config mapping IL
 	option CountryCode 'SG'
-	option timezone 'IST-2IDT,M3.4.4/26,M10.5.0'
+	option timezone 'IST-2IDT,M3.4.5,M10.5.0'
 config mapping IT
 	option CountryCode 'EU'
 	option timezone 'CET-1CEST,M3.5.0,M10.5.0/3'
@@ -102,15 +102,15 @@ config mapping PT
 	option timezone 'WET0WEST,M3.5.0/1,M10.5.0'
 config mapping KE
 	option CountryCode 'SG'
-	option timezone 'EAT-3'
+	option timezone 'EAT-3'	
 config mapping CN
 	option CountryCode 'CN'
 	option timezone 'CST-8'
 config mapping HK
-	option CountryCode 'CN'
+	option CountryCode 'SG'
 	option timezone 'HKT-8'
 config mapping TW
-	option CountryCode 'CN'
+	option CountryCode 'SG'
 	option timezone 'CST-8'
 config mapping IN
 	option CountryCode 'IN'
@@ -163,3 +163,15 @@ config mapping SK
 config mapping LA
 	option CountryCode 'SG'
 	option timezone '<+07>-7'
+config mapping SA
+	option CountryCode 'SG'
+	option timezone '<+03>-3'
+config mapping PA
+	option CountryCode 'US'
+	option timezone 'EST5'
+config mapping CR
+	option CountryCode 'US'
+	option timezone 'CST6'
+config mapping PH
+	option CountryCode 'SG'
+	option timezone 'PST-8'

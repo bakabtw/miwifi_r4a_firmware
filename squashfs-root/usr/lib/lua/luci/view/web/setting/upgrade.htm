@@ -9,6 +9,7 @@ local ver = require("xiaoqiang.XQVersion").webVersion
 <title><%:小米路由器%></title>
 <meta name="viewport" content="width=1200">
 <link href="<%=resource%>/web/css/bc.css?v=<%=ver%>" rel="stylesheet">
+<link href="<%=resource%>/web/css/layout.css?v=<%=ver%>" rel="stylesheet">
 <link href="<%=resource%>/web/css/upgrade.css?v=<%=ver%>" rel="stylesheet">
 </head>
 <body>
@@ -17,8 +18,9 @@ local ver = require("xiaoqiang.XQVersion").webVersion
     <div id="bd">
     <%include("web/inc/sysinfo")%>
     </div>
-    <%include("web/inc/footer")%>
+    
 </div>
+<%include("web/inc/footer")%>
 <%include("web/inc/g.js")%>
 <%include("web/inc/reboot.js")%>
 <%include("web/inc/sysinfo.js")%>

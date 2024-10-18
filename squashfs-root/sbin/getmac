@@ -9,15 +9,22 @@ usage() {
 }
 
 # GMAC MAC address offset, as defined in raether.h
+#define LAN_OFFSET    0xE000
+#define WAN_OFFSET    0xE006
+#define WL0_OFFSET    0x8004
+#define WL1_OFFSET    0x4
+
 GMAC0_OFFSET=0xE000
 GMAC2_OFFSET=0xE006
 
-factory_mtd_name=Factory
+factory_mtd_name="Factory"
+dev_name="$(find_mtd_part factory_mtd_name)"
+[ -z "$dev_name" ] && dev_name="/dev/mtdblock4"
 
-ethaddr_lan=$(hexdump -C $(find_mtd_part $factory_mtd_name) -s $GMAC0_OFFSET -n 6 | awk 'NR<2 {print $2":"$3":"$4":"$5":"$6":"$7}')
-ethaddr_wan=$(hexdump -C $(find_mtd_part $factory_mtd_name) -s $GMAC2_OFFSET -n 6 | awk 'NR<2 {print $2":"$3":"$4":"$5":"$6":"$7}')
-wl1addr=$(hexdump -C $(find_mtd_part $factory_mtd_name) -s 4 -n 6 | awk 'NR<2 {print $2":"$3":"$4":"$5":"$6":"$7}')
-wl0addr=$(hexdump -C $(find_mtd_part $factory_mtd_name) -s $((32768+4)) -n 6 | awk 'NR<2 {print $2":"$3":"$4":"$5":"$6":"$7}')
+ethaddr_lan=$(hexdump -C -s $GMAC0_OFFSET -n 6 $dev_name | awk 'NR<2 {print $2":"$3":"$4":"$5":"$6":"$7}')
+ethaddr_wan=$(hexdump -C -s $GMAC2_OFFSET -n 6 $dev_name | awk 'NR<2 {print $2":"$3":"$4":"$5":"$6":"$7}')
+wl1addr=$(hexdump -C -s 4 -n 6 $dev_name | awk 'NR<2 {print $2":"$3":"$4":"$5":"$6":"$7}')
+wl0addr=$(hexdump -C -s $((32768+4)) -n 6 $dev_name | awk 'NR<2 {print $2":"$3":"$4":"$5":"$6":"$7}')
 
 case $1 in
 	-h)
@@ -36,6 +43,7 @@ case $1 in
 		echo "$ethaddr_lan"
 		;;
 	*)
-		echo "$ethaddr_wan,$wl1addr,$wl0addr"
+		echo "$ethaddr_wan,$ethaddr_lan,$wl1addr,$wl0addr"
 		;;
 esac
+

@@ -2,14 +2,14 @@
 
 
 local bit=  require "bit"
-local px =  require "Posix"
+local px =  require "posix"
 local uci=  require 'uci'
 local io=   require 'io'
 local json= require 'json'
 
 local miqos=require 'miqos'
 
-px.openlog("miqos","np",LOG_USER)
+px.openlog("miqos",LOG_NDELAY,LOG_USER)
 
 function logger(loglevel,msg)
     px.syslog(loglevel,msg)

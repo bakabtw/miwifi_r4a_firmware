@@ -1,5 +1,5 @@
 #!/usr/bin/env lua
-local posix = require("Posix")
+local posix = require("posix")
 local ubus = require ("ubus")
 local fs     = require "nixio.fs"
 
@@ -33,14 +33,15 @@ if VERSION == "LESSMEM" then
 end
 
 local filename = ""
-filexml = io.open(cfg.tmp_speedtest_xml)
-if filexml then
-    filexml:close()
-    is_oversea_file = true
-    filename = cfg.tmp_speedtest_xml
-else
-    filename = cfg.xmlfile
-end
+--filexml = io.open(cfg.tmp_speedtest_xml)
+--if filexml then
+--    filexml:close()
+--    is_oversea_file = true
+--    filename = cfg.tmp_speedtest_xml
+--else
+--    filename = cfg.xmlfile
+--end
+filename = cfg.xmlfile
 
 local pp = io.open(filename)
 local line = pp:read("*line")
@@ -50,14 +51,14 @@ local u = ""
 local pids = {}
 
 function die(err)
-	posix.openlog(arg[0], "cp", posix.LOG_LOCAL7)
+	posix.openlog(arg[0], posix.LOG_LOCAL7)
 	posix.syslog(posix.LOG_ERR, err)
 	posix.closelog()
 	os.exit(1)
 end
 
 function logger(loglevel,msg)
-    posix.openlog("speedtest","np",LOG_USER)
+    posix.openlog("speedtest", LOG_USER)
     posix.syslog(loglevel,msg)
     posix.closelog()
 end
@@ -208,16 +209,16 @@ end
 
 function done(signo)
 	io.output("/dev/null")
-	local fd = io.open("/dev/null", "rw")
-	if not posix.dup(fd, io.stdout) then
-		die("error dup2-ing")
-	end
-	if not posix.dup(fd, io.stderr) then
-		die("error dup2-ing")
-	end
-	get_pstree2(posix.getpid("pid"), pids)
+	-- local fd = io.open("/dev/null", "rw")
+	-- if not posix.dup(fd, io.stdout) then
+		-- die("error dup2-ing")
+	-- end
+	-- if not posix.dup(fd, io.stderr) then
+		-- die("error dup2-ing")
+	-- end
+	get_pstree2(posix.getpid(), pids)
 	for k, pid in ipairs(pids) do
-		print("kill pid:" .. pid)
+		--print("kill pid:" .. pid)
 		posix.kill(pid, posix.SIGINT)
 	end
 	os.exit(0)

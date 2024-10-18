@@ -12,6 +12,7 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
 <title><%:小米路由器%></title>
 <meta name="viewport" content="width=1200">
 <link href="<%=resource%>/web/css/bc.css?v=<%=ver%>" rel="stylesheet">
+<link href="<%=resource%>/web/css/layout.css?v=<%=ver%>" rel="stylesheet">
 <link href="<%=resource%>/web/css/ddns.css?v=<%=ver%>" rel="stylesheet">
 </head>
 <body>
@@ -382,6 +383,11 @@ local macdefault = string.upper(xqlanwanutil.getDefaultMacAddress())
                                 servicename: list[i].servicename
                             });
                             trarr.push(tr);
+                            if(list[i].status == 2 || list[i].status == 0){
+                                setTimeout(function(){
+                                    $.pub('ddns:get');
+                                }, 1000);
+                            }
                         }
                         $('#serviceTbody').html(trarr.join(''));
                     }else{

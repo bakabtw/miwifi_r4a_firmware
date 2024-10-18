@@ -7,6 +7,8 @@ mac_b6=$(echo $mac | cut -d ':' -f 6)
 # Generate default SSID and SSID for uninitialized device
 # Extend UID part of default SSID
 prefix=Xiaomi
+hwv="`/sbin/hwversion`"
+[ "$hwv" == "Ver. B" ] && prefix=Redmi
 uid=$(printf "%04X" $((0x$mac_b5$mac_b6)))
 extender=$(printf "%04X" $((0xffff-0x$uid)))
 ifconfig wl0 1>&- 2>&- && {

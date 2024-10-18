@@ -1,0 +1,8 @@
+Package: kmod-gpio-button-hotplug
+Version: 4.4.198.mt7621-1
+Depends: kernel (=4.4.198.mt7621-1-6da9ad8eabdf7aa41d3d86ec06d94edf)
+Source: package/kernel/gpio-button-hotplug
+Section: kernel
+Architecture: mipsel_24kc
+Installed-Size: 6064
+Description:  Simple GPIO Button Hotplug driver

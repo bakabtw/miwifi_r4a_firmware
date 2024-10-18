@@ -14,11 +14,11 @@ mount_no_mtd() {
 }
 
 check_for_mtd() {
-    check_skip || {
+    #check_skip || {
 	grep -qs overlay /proc/mtd || {
 	    mount_no_mtd && pi_mount_skip_next=true
 	}
-    }
+    #}
 }
 
 boot_hook_add preinit_mount_root check_for_mtd

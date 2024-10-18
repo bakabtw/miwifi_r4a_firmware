@@ -1,13 +1,11 @@
 #!/bin/sh
-# Copyright (C) 2006-2011 OpenWrt.org
+# Copyright (C) 2006-2014 OpenWrt.org
 # Copyright (C) 2006 Fokus Fraunhofer <carsten.tittel@fokus.fraunhofer.de>
+# Copyright (C) 2010 Vertical Communications
 
 
 debug () {
 	${DEBUG:-:} "$@"
-}
-mount() {
-	busybox mount "$@"
 }
 
 # newline
@@ -18,10 +16,6 @@ _C=0
 NO_EXPORT=1
 LOAD_STATE=1
 LIST_SEP=" "
-
-hotplug_dev() {
-	env -i ACTION=$1 INTERFACE=$2 /sbin/hotplug-call net
-}
 
 append() {
 	local var="$1"
@@ -38,21 +32,6 @@ list_contains() {
 
 	eval "val=\" \${$var} \""
 	[ "${val%% $str *}" != "$val" ]
-}
-
-list_remove() {
-	local var="$1"
-	local remove="$2"
-	local val
-
-	eval "val=\" \${$var} \""
-	val1="${val%% $remove *}"
-	[ "$val1" = "$val" ] && return
-	val2="${val##* $remove }"
-	[ "$val2" = "$val" ] && return
-	val="${val1## } ${val2%% }"
-	val="${val%% }"
-	eval "export ${NO_EXPORT:+-n} -- \"$var=\$val\""
 }
 
 config_load() {
@@ -78,16 +57,16 @@ config () {
 	export ${NO_EXPORT:+-n} CONFIG_NUM_SECTIONS=$(($CONFIG_NUM_SECTIONS + 1))
 	name="${name:-cfg$CONFIG_NUM_SECTIONS}"
 	append CONFIG_SECTIONS "$name"
-	[ -n "$NO_CALLBACK" ] || config_cb "$cfgtype" "$name"
 	export ${NO_EXPORT:+-n} CONFIG_SECTION="$name"
-	export ${NO_EXPORT:+-n} "CONFIG_${CONFIG_SECTION}_TYPE=$cfgtype"
+	config_set "$CONFIG_SECTION" "TYPE" "${cfgtype}"
+	[ -n "$NO_CALLBACK" ] || config_cb "$cfgtype" "$name"
 }
 
 option () {
 	local varname="$1"; shift
 	local value="$*"
 
-	export ${NO_EXPORT:+-n} "CONFIG_${CONFIG_SECTION}_${varname}=$value"
+	config_set "$CONFIG_SECTION" "${varname}" "${value}"
 	[ -n "$NO_CALLBACK" ] || option_cb "$varname" "$*"
 }
 
@@ -102,49 +81,18 @@ list() {
 	config_set "$CONFIG_SECTION" "${varname}_ITEM$len" "$value"
 	config_set "$CONFIG_SECTION" "${varname}_LENGTH" "$len"
 	append "CONFIG_${CONFIG_SECTION}_${varname}" "$value" "$LIST_SEP"
-	list_cb "$varname" "$*"
-}
-
-config_rename() {
-	local OLD="$1"
-	local NEW="$2"
-	local oldvar
-	local newvar
-
-	[ -n "$OLD" -a -n "$NEW" ] || return
-	for oldvar in `set | grep ^CONFIG_${OLD}_ | \
-		sed -e 's/\(.*\)=.*$/\1/'` ; do
-		newvar="CONFIG_${NEW}_${oldvar##CONFIG_${OLD}_}"
-		eval "export ${NO_EXPORT:+-n} \"$newvar=\${$oldvar}\""
-		unset "$oldvar"
-	done
-	export ${NO_EXPORT:+-n} CONFIG_SECTIONS="$(echo " $CONFIG_SECTIONS " | sed -e "s, $OLD , $NEW ,")"
-
-	[ "$CONFIG_SECTION" = "$OLD" ] && export ${NO_EXPORT:+-n} CONFIG_SECTION="$NEW"
+	[ -n "$NO_CALLBACK" ] || list_cb "$varname" "$*"
 }
 
 config_unset() {
 	config_set "$1" "$2" ""
 }
 
-config_clear() {
-	local SECTION="$1"
-	local oldvar
-
-	list_remove CONFIG_SECTIONS "$SECTION"
-	export ${NO_EXPORT:+-n} CONFIG_SECTIONS="${SECTION:+$CONFIG_SECTIONS}"
-
-	for oldvar in `set | grep ^CONFIG_${SECTION:+${SECTION}_} | \
-		sed -e 's/\(.*\)=.*$/\1/'` ; do
-		unset $oldvar
-	done
-}
-
 # config_get <variable> <section> <option> [<default>]
 # config_get <section> <option>
 config_get() {
 	case "$3" in
-		"") eval echo "\${CONFIG_${1}_${2}:-\${4}}";;
+		"") eval echo "\"\${CONFIG_${1}_${2}:-\${4}}\"";;
 		*)  eval export ${NO_EXPORT:+-n} -- "${1}=\${CONFIG_${2}_${3}:-\${4}}";;
 	esac
 }
@@ -154,8 +102,8 @@ config_get_bool() {
 	local _tmp
 	config_get _tmp "$2" "$3" "$4"
 	case "$_tmp" in
-		1|on|true|enabled) _tmp=1;;
-		0|off|false|disabled) _tmp=0;;
+		1|on|true|yes|enabled) _tmp=1;;
+		0|off|false|no|disabled) _tmp=0;;
 		*) _tmp="$4";;
 	esac
 	export ${NO_EXPORT:+-n} "$1=$_tmp"
@@ -165,11 +113,8 @@ config_set() {
 	local section="$1"
 	local option="$2"
 	local value="$3"
-	local old_section="$CONFIG_SECTION"
 
-	CONFIG_SECTION="$section"
-	option "$option" "$value"
-	CONFIG_SECTION="$old_section"
+	export ${NO_EXPORT:+-n} "CONFIG_${section}_${option}=${value}"
 }
 
 config_foreach() {
@@ -205,11 +150,111 @@ config_list_foreach() {
 	done
 }
 
-load_modules() {
-	[ -d /etc/modules.d ] && {
-		cd /etc/modules.d
-		sed 's/^[^#]/insmod &/' $* | ash 2>&- || :
-	}
+default_prerm() {
+	local root="${IPKG_INSTROOT}"
+	local pkgname="$(basename ${1%.*})"
+	local ret=0
+
+	if [ -f "$root/usr/lib/opkg/info/${pkgname}.prerm-pkg" ]; then
+		( . "$root/usr/lib/opkg/info/${pkgname}.prerm-pkg" )
+		ret=$?
+	fi
+
+	local shell="$(which bash)"
+	for i in $(grep -s "^/etc/init.d/" "$root/usr/lib/opkg/info/${pkgname}.list"); do
+		if [ -n "$root" ]; then
+			${shell:-/bin/sh} "$root/etc/rc.common" "$root$i" disable
+		else
+			if [ "$PKG_UPGRADE" != "1" ]; then
+				"$i" disable
+			fi
+			"$i" stop
+		fi
+	done
+
+	return $ret
+}
+
+add_group_and_user() {
+	local pkgname="$1"
+	local rusers="$(sed -ne 's/^Require-User: *//p' $root/usr/lib/opkg/info/${pkgname}.control 2>/dev/null)"
+
+	if [ -n "$rusers" ]; then
+		local tuple oIFS="$IFS"
+		for tuple in $rusers; do
+			local uid gid uname gname
+
+			IFS=":"
+			set -- $tuple; uname="$1"; gname="$2"
+			IFS="="
+			set -- $uname; uname="$1"; uid="$2"
+			set -- $gname; gname="$1"; gid="$2"
+			IFS="$oIFS"
+
+			if [ -n "$gname" ] && [ -n "$gid" ]; then
+				group_exists "$gname" || group_add "$gname" "$gid"
+			elif [ -n "$gname" ]; then
+				gid="$(group_add_next "$gname")"
+			fi
+
+			if [ -n "$uname" ]; then
+				user_exists "$uname" || user_add "$uname" "$uid" "$gid"
+			fi
+
+			if [ -n "$uname" ] && [ -n "$gname" ]; then
+				group_add_user "$gname" "$uname"
+			fi
+
+			unset uid gid uname gname
+		done
+	fi
+}
+
+default_postinst() {
+	local root="${IPKG_INSTROOT}"
+	local pkgname="$(basename ${1%.*})"
+	local ret=0
+
+	add_group_and_user "${pkgname}"
+
+	if [ -f "$root/usr/lib/opkg/info/${pkgname}.postinst-pkg" ]; then
+		( . "$root/usr/lib/opkg/info/${pkgname}.postinst-pkg" )
+		ret=$?
+	fi
+
+	if [ -d "$root/rootfs-overlay" ]; then
+		cp -R $root/rootfs-overlay/. $root/
+		rm -fR $root/rootfs-overlay/
+	fi
+
+	if [ -z "$root" ] && grep -q -s "^/etc/modules.d/" "/usr/lib/opkg/info/${pkgname}.list"; then
+		kmodloader
+	fi
+
+	if [ -z "$root" ] && grep -q -s "^/etc/uci-defaults/" "/usr/lib/opkg/info/${pkgname}.list"; then
+		. /lib/functions/system.sh
+		[ -d /tmp/.uci ] || mkdir -p /tmp/.uci
+		for i in $(grep -s "^/etc/uci-defaults/" "/usr/lib/opkg/info/${pkgname}.list"); do
+			( [ -f "$i" ] && cd "$(dirname $i)" && . "$i" ) && rm -f "$i"
+		done
+		uci commit
+	fi
+
+	[ -n "$root" ] || rm -f /tmp/luci-indexcache 2>/dev/null
+
+	local shell="$(which bash)"
+	for i in $(grep -s "^/etc/init.d/" "$root/usr/lib/opkg/info/${pkgname}.list"); do
+		if [ -n "$root" ]; then
+			${shell:-/bin/sh} "$root/etc/rc.common" "$root$i" enable
+		else
+			if [ "$PKG_UPGRADE" != "1" ]; then
+				"$i" enable
+			fi
+			"$i" start
+		fi
+	done
+
+	return $ret
 }
 
 include() {
@@ -220,59 +265,19 @@ include() {
 	done
 }
 
-find_mtd_part() {
+find_mtd_index() {
 	local PART="$(grep "\"$1\"" /proc/mtd | awk -F: '{print $1}')"
+	local INDEX="${PART##mtd}"
+
+	echo ${INDEX}
+}
+
+find_mtd_part() {
+	local INDEX=$(find_mtd_index "$1")
 	local PREFIX=/dev/mtdblock
 
-	PART="${PART##mtd}"
 	[ -d /dev/mtdblock ] && PREFIX=/dev/mtdblock/
-	echo "${PART:+$PREFIX$PART}"
-}
-
-strtok() { # <string> { <variable> [<separator>] ... }
-	local tmp
-	local val="$1"
-	local count=0
-
-	shift
-
-	while [ $# -gt 1 ]; do
-		tmp="${val%%$2*}"
-
-		[ "$tmp" = "$val" ] && break
-
-		val="${val#$tmp$2}"
-
-		export ${NO_EXPORT:+-n} "$1=$tmp"; count=$((count+1))
-		shift 2
-	done
-
-	if [ $# -gt 0 -a -n "$val" ]; then
-		export ${NO_EXPORT:+-n} "$1=$val"; count=$((count+1))
-	fi
-
-	return $count
-}
-
-
-jffs2_mark_erase() {
-	local part="$(find_mtd_part "$1")"
-	[ -z "$part" ] && {
-		echo Partition not found.
-		return 1
-	}
-	echo -e "\xde\xad\xc0\xde" | mtd -qq write - "$1"
-}
-
-uci_apply_defaults() {
-	cd /etc/uci-defaults || return 0
-	files="$(ls)"
-	[ -z "$files" ] && return 0
-	mkdir -p /tmp/.uci
-	for file in $files; do
-		( . "./$(basename $file)" ) && rm -f "$file"
-	done
-	uci commit
+	echo "${INDEX:+$PREFIX$INDEX}"
 }
 
 group_add() {
@@ -282,59 +287,68 @@ group_add() {
 	[ -f "${IPKG_INSTROOT}/etc/group" ] || return 1
 	[ -n "$IPKG_INSTROOT" ] || lock /var/lock/group
 	echo "${name}:x:${gid}:" >> ${IPKG_INSTROOT}/etc/group
-	rc=$?
 	[ -n "$IPKG_INSTROOT" ] || lock -u /var/lock/group
-	return $rc
 }
 
 group_exists() {
 	grep -qs "^${1}:" ${IPKG_INSTROOT}/etc/group
 }
 
+group_add_next() {
+	local gid gids
+	gid=$(grep -s "^${1}:" ${IPKG_INSTROOT}/etc/group | cut -d: -f3)
+	if [ -n "$gid" ]; then
+		echo $gid
+		return
+	fi
+	gids=$(cat ${IPKG_INSTROOT}/etc/group | cut -d: -f3)
+	gid=65536
+	while [ -n "$(echo "$gids" | grep "^$gid$")" ] ; do
+	        gid=$((gid + 1))
+	done
+	group_add $1 $gid
+	echo $gid
+}
+
+group_add_user() {
+	local grp delim=","
+	grp=$(grep -s "^${1}:" ${IPKG_INSTROOT}/etc/group)
+	[ -z "$(echo $grp | cut -d: -f4 | grep $2)" ] || return
+	[ -n "$(echo $grp | grep ":$")" ] && delim=""
+	[ -n "$IPKG_INSTROOT" ] || lock /var/lock/passwd
+	sed -i "s/$grp/$grp$delim$2/g" ${IPKG_INSTROOT}/etc/group
+	[ -n "$IPKG_INSTROOT" ] || lock -u /var/lock/passwd
+}
+
 user_add() {
 	local name="${1}"
 	local uid="${2}"
-	local gid="${3:-$2}"
+	local gid="${3}"
 	local desc="${4:-$1}"
 	local home="${5:-/var/run/$1}"
 	local shell="${6:-/bin/false}"
 	local rc
+	[ -z "$uid" ] && {
+		uids=$(cat ${IPKG_INSTROOT}/etc/passwd | cut -d: -f3)
+		uid=65536
+		while [ -n "$(echo "$uids" | grep "^$uid$")" ] ; do
+		        uid=$((uid + 1))
+		done
+	}
+	[ -z "$gid" ] && gid=$uid
 	[ -f "${IPKG_INSTROOT}/etc/passwd" ] || return 1
 	[ -n "$IPKG_INSTROOT" ] || lock /var/lock/passwd
 	echo "${name}:x:${uid}:${gid}:${desc}:${home}:${shell}" >> ${IPKG_INSTROOT}/etc/passwd
 	echo "${name}:x:0:0:99999:7:::" >> ${IPKG_INSTROOT}/etc/shadow
-	rc=$?
 	[ -n "$IPKG_INSTROOT" ] || lock -u /var/lock/passwd
-	return $rc
 }
 
 user_exists() {
 	grep -qs "^${1}:" ${IPKG_INSTROOT}/etc/passwd
 }
 
-
-pi_include() {
-	if [ -f "/tmp/overlay/$1" ]; then
-		. "/tmp/overlay/$1"
-	elif [ -f "$1" ]; then
-		. "$1"
-	elif [ -d "/tmp/overlay/$1" ]; then
-		if [ -n "$(ls /tmp/overlay/$1/*.sh 2>/dev/null)" ]; then
-			for src_script in /tmp/overlay/$1/*.sh; do
-				. "$src_script"
-			done
-		fi
-	elif [ -d "$1" ]; then
-		if [ -n "$(ls $1/*.sh 2>/dev/null)" ]; then
-			for src_script in $1/*.sh; do
-				. "$src_script"
-			done
-		fi
-	else
-		echo "WARNING: $1 not found"
-		return 1
-	fi
-	return 0
+board_name() {
+	[ -e /tmp/sysinfo/board_name ] && cat /tmp/sysinfo/board_name || echo "generic"
 }
 
 [ -z "$IPKG_INSTROOT" -a -f /lib/config/uci.sh ] && . /lib/config/uci.sh

@@ -3,9 +3,6 @@
 
 START=95
 tmpconf="/var/etc/miniupnpd.conf"
-export PROCLINE="/usr/sbin/miniupnpd -f $tmpconf"
-#export PROCLINE="/usr/sbin/miniupnpd -f $tmpconf -d"
-export PROCFLAG=$PROCLINE
 
 upnpd_get_port_range() {
     local _var="$1"
@@ -176,17 +173,17 @@ start() {
         # start firewall
         iptables -L MINIUPNPD >/dev/null 2>/dev/null || fw3 reload
 
-        /usr/sbin/supervisord start
+		service_start /usr/sbin/miniupnpd -S -f $tmpconf
     else
         logger -t "upnp daemon" "external interface not found, not starting"
     fi
-    return 0
 }
 
 stop() {
-    /usr/sbin/supervisord stop
+    service_stop /usr/sbin/miniupnpd
+    /etc/init.d/firewall restart
 
     iptables -t nat -F MINIUPNPD 2>/dev/null
+	iptables -t nat -F MINIUPNPD-POSTROUTING 2>/dev/null
     iptables -t filter -F MINIUPNPD 2>/dev/null
-    return 0
 }

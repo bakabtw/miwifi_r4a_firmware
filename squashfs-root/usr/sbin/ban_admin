@@ -37,7 +37,7 @@ get_stop_time() {
     # get ban stop time
     local now_timestamp=$(date +"%s")
     let stop_timestamp="$now_timestamp + $BAN_SECONDS"
-    stop_time=$(date -u -D "%s" -d "$stop_timestamp" +"%Y-%m-%dT%H:%M:%S")
+    stop_time=$(date -u -d "@$stop_timestamp" +"%Y-%m-%dT%H:%M:%S")
 }
 
 firewall_renew() {
@@ -54,13 +54,18 @@ firewall_renew() {
 
 firewall_set() {
     local mac="$1"
+    local lan_ip=`uci -q get network.lan.ipaddr`
+	
     get_stop_time $2
     if ! iptables -S "$rule_chain"
     then
-	iptables -N "$rule_chain" && iptables -A input_lan_rule -j "$rule_chain"
+	iptables -N "$rule_chain" && iptables -A input_rule -j "$rule_chain"
     fi
     firewall_del_mac $mac
-    iptables -A $rule_chain -p tcp --dport 80 -m mac --mac-source "$mac" -m time --datestop $stop_time -j DROP
+    iptables -A $rule_chain -i br-lan -p tcp --dport 80 -m mac --mac-source "$mac" -m time --datestop $stop_time -j DROP
+    echo "$lan_ip,80" > /proc/net/nf_conntrack
+    iptables -A $rule_chain -i br-lan -p tcp --dport 443 -m mac --mac-source "$mac" -m time --datestop $stop_time -j DROP
+    echo "$lan_ip,443" > /proc/net/nf_conntrack
 }
 
 case $1 in

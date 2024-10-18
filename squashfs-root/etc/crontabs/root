@@ -8,7 +8,9 @@
 0 20 * * * /usr/bin/stat_lan
 # brute force protected
 */3 * * * * /usr/sbin/bfd -q
-0 5 * * 3 /etc/init.d/web_filter_record restart >/dev/null 2>&1
-0 3 * * * /etc/init.d/sysapihttpd restart >/dev/null 2>&1
-5 3 * * * /usr/sbin/reset_svc.sh "etm" "20" "/etc/init.d/xunlei restart"
-0 8,19 * * * /usr/sbin/netdig.sh >/dev/null 2>&1
+
+# disable below on EVT
+#0 5 * * 3 /etc/init.d/web_filter_record restart >/dev/null 2>&1
+#0 3 * * * /etc/init.d/sysapihttpd restart >/dev/null 2>&1
+#5 3 * * * /usr/sbin/reset_svc.sh "etm" "20" "/etc/init.d/xunlei restart"
+#0 8,19 * * * /usr/sbin/netdig.sh >/dev/null 2>&1

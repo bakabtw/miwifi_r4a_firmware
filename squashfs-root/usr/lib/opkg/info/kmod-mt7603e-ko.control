@@ -1,0 +1,8 @@
+Package: kmod-mt7603e-ko
+Version: 4.4.198.mt7621+4.1.2.3-1
+Depends: kernel (=4.4.198.mt7621-1-6da9ad8eabdf7aa41d3d86ec06d94edf), mt7603e-scripts, wifi-profile
+Source: package/mtk/drivers/mt7603e
+Section: kernel
+Architecture: mipsel_24kc
+Installed-Size: 1090180
+Description:  MT7603e BUILD_KO

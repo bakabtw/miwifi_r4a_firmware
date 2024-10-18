@@ -1,0 +1,9 @@
+Package: uboot-ramips
+Version: 5.0.1.0-1
+Depends: libc, xiaoqiang-util
+Source: package/miwifi/system/uboot-ramips
+Section: boot
+Architecture: mipsel_24kc
+Installed-Size: 105
+Description:  U-Boot for MTK MIPS platforms.
+ Currently used on MiWiFi R4AV2.

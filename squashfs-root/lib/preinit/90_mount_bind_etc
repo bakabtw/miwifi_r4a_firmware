@@ -2,11 +2,12 @@
 # Copyright (C) 2006-2010 OpenWrt.org
 # Copyright (C) 2010 Vertical Communications
 
+# Copyright (C) 2019 Xiaomi miwifi Communications
 
 # When we failed  mount /data, the whole mtd partition will be automatically erased by "mtd erase overlay"
 # thus we lose all config files. here we try to save the day
 do_data_mount_fail_recover() {
-        local rec_mtd_name="cfg_bak"
+	local rec_mtd_name="cfg_bak"
         local rec_flag="false"
 
         restore=`nvram get restore_defaults`
@@ -106,7 +107,7 @@ process_etc() {
 	# for: 1, ota; 2, format disk; 3, downgrade
 
 	mkdir -p /data/etc
-        flag_name=`uci get misc.mount_bind_etc.flag_name`
+    flag_name=`uci get misc.mount_bind_etc.flag_name`
 	flg_ota=`nvram get flag_ota_reboot`
 	flg_format=`nvram get $flag_name`
 	curr_os=`nvram get flag_boot_rootfs`
@@ -178,6 +179,19 @@ process_etc() {
 	return 0
 }
 
+do_mount_ramfs(){
+
+       local ori_dir="/etc/init.d /etc/rc.d"
+
+       for dir in $ori_dir
+       do
+               cp -a $dir /tmp/mount_tmp
+               mount -t ramfs -n none $dir
+               cp -a /tmp/mount_tmp/. $dir
+               rm -rf /tmp/mount_tmp
+       done
+}
+
 do_mount_bind_etc() {
 
 	process_etc
@@ -192,21 +206,15 @@ do_mount_bind_etc() {
 			cp -arf /etc/$line /data/etc/$line
 		fi
 	done
-
-        #/data/etc/init.d/rcS must exit before mount /etc,or fail and keep in ramfs&&yellow led
-	if [ ! -f /data/etc/init.d/rcS ]; then
-                echo "/data/etc/init.d/rcS damaged,recovering /etc"
-		rm -rf /data/etc
-		cp -prf /etc /data/etc
-        fi
-
 	cd /
 	sync
 
 	# Do uci conf integrity checks before we mount.bind /etc
 	do_uci_config_integrity_check
 
+	mount --bind / /rom
 	mount --bind /data/etc /etc
+	do_mount_ramfs
 
 	rm -f /etc/with_os*
 	touch /etc/with_os_"$curr_os"
@@ -214,9 +222,8 @@ do_mount_bind_etc() {
 	do_data_mount_fail_recover
 
 	if [ "$post_ota" = "1" ] ; then
-		/usr/sbin/config_post_ota.sh
+		[ -x /usr/sbin/config_post_ota.sh ] && /usr/sbin/config_post_ota.sh || echo "WARN: NO config_post_ota find!"
 
-        [ "D01" = "`cat /proc/xiaoqiang/model`" ] && xqwhc_postota
 	fi
 
 	[ -s /tmp/.uci.disk ] && uci import -f /tmp/.uci.disk && rm -f /tmp/.uci.disk

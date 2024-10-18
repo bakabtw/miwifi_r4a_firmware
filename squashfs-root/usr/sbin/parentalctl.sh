@@ -20,11 +20,11 @@ pctl_filter_device_table="parentalctl_device_filter"
 pctl_filter_host_table="parentalctl_host_filter"
 
 pctl_conf_path="/etc/parentalctl/"
-local _pctl_file="${pctl_conf_path}/${module_name}.conf"
-local _pctl_ip_file="${pctl_conf_path}/${module_name}_ip.conf"
-local _has_pctl_file=0
-local _dnsmasq_file="/etc/dnsmasq.d/${module_name}.conf"
-local _dnsmasq_var_file="/var/etc/dnsmasq.d/${module_name}.conf"
+_pctl_file="${pctl_conf_path}/${module_name}.conf"
+_pctl_ip_file="${pctl_conf_path}/${module_name}_ip.conf"
+_has_pctl_file=0
+_dnsmasq_file="/etc/dnsmasq.d/${module_name}.conf"
+_dnsmasq_var_file="/var/etc/dnsmasq.d/${module_name}.conf"
 
 pctl_logger()
 {
@@ -39,7 +39,6 @@ dnsmasq_restart()
     process_pid1=$( echo $process_pid |awk '{ print $1; exit;}' 2>/dev/null)
     process_pid2=$( echo $process_pid |awk '{ print $2; exit;}' 2>/dev/null)
 
-
     if [ "$process_num" != "2" ]; then
         /etc/init.d/dnsmasq stop
         /etc/init.d/dnsmasq start
@@ -50,8 +49,7 @@ dnsmasq_restart()
     do
         let retry_times+=1
         /etc/init.d/dnsmasq stop
-        /etc/init.d/dnsmasq start
-        sleep 1
+	/etc/init.d/dnsmasq start
 
         process_newpid=$(ps w | grep "/usr/sbin/dnsmasq" | grep "/var/etc/dnsmasq.conf" | awk '{print $1}' 2>/dev/null)
         process_newnum=$( echo $process_newpid |awk '{print NF}' 2>/dev/null)
@@ -226,7 +224,7 @@ pctl_ipset_add_ip_file()
 
 }
 
-local _ipset_cache_file="/tmp/parentalctl.ipset"
+_ipset_cache_file="/tmp/parentalctl.ipset"
 rm $_ipset_cache_file 2>/dev/null
 
 parse_hostfile_one()
@@ -372,9 +370,109 @@ parse_device()
             _cmd_line="$_cmd_line --timestart 00:00 --timestop 23:59 "
         }
 
+        offset_seconds=0
+        timezone=$(uci -q get system.@system[0].timezone)
+        case "${timezone}" in
+            *+0) offset_seconds=0;;
+            *+1) offset_seconds=3600;;
+            *+2) offset_seconds=7200;;
+            *+3) offset_seconds=10800;;
+            *+3:30) offset_seconds=12600;;
+            *+4) offset_seconds=14400;;
+            *+4:30) offset_seconds=16200;;
+            *+5) offset_seconds=18000;;
+            *+6) offset_seconds=21600;;
+            *+7) offset_seconds=25200;;
+            *+8) offset_seconds=28800;;
+            *+9) offset_seconds=32400;;
+            *+9:30) offset_seconds=34200;;
+            *+10) offset_seconds=36000;;
+            *+11) offset_seconds=39600;;
+            *+12) offset_seconds=43200;;
+            *-0) offset_seconds=0;;
+            *-1) offset_seconds=-3600;;
+            *-2) offset_seconds=-7200;;
+            *-3) offset_seconds=-10800;;
+            *-3:30) offset_seconds=-12600;;
+            *-4) offset_seconds=-14400;;
+            *-4:30) offset_seconds=-16200;;
+            *-5) offset_seconds=-18000;;
+            *-5:30) offset_seconds=-19800;;
+            *-5:45) offset_seconds=-20700;;
+            *-6) offset_seconds=-21600;;
+            *-6:30) offset_seconds=-23400;;
+            *-7) offset_seconds=-25200;;
+            *-8) offset_seconds=-28800;;
+            *-8:30) offset_seconds=-30600;;
+            *-9) offset_seconds=-32400;;
+            *-9:30) offset_seconds=-34200;;
+            *-10) offset_seconds=-36000;;
+            *-10:30) offset_seconds=-37800;;
+            *-11) offset_seconds=-39600;;
+            *-11:30) offset_seconds=-41400;;
+            *-12) offset_seconds=-43200;;
+            *-12:45) offset_seconds=-45900;;
+            *-13) offset_seconds=-46800;;
+            *-14) offset_seconds=-50400;;
+            *)
+               cur_seconds=`date +%s`
+               cur_date_utc=`date -u +%Y%m%d -d @$cur_seconds`
+               cur_date_local=`date +%Y%m%d -d @$cur_seconds`
+
+               cur_time_utc=`date -u +%H:%M:%S -d @$cur_seconds`
+               cur_time_local=`date +%H:%M:%S -d @$cur_seconds`
+
+               cur_seconds_utc=`date -d "$cur_time_utc" +%s`
+               cur_seconds_local=`date -d "$cur_time_local" +%s`
+
+               if [ $cur_date_utc -gt $cur_date_local ]; then
+                   cur_seconds_local=`expr $cur_seconds_local - 86400`
+               fi
+
+               if [ $cur_date_utc -lt $cur_date_local ]; then
+                   cur_seconds_local=`expr $cur_seconds_local + 86400`
+               fi
+
+               offset_seconds=`expr $cur_seconds_utc - $cur_seconds_local`
+            ;;
+        esac
+
         #special time
+        start_date_utc=$start_date
+        stop_date_utc=$stop_date
         [ "$start_time" != "" -a "$stop_time" != "" ] && {
-            _cmd_line="$_cmd_line --timestart $start_time --timestop $stop_time "
+            start_seconds=`date -d "$start_time" +%s`
+            start_seconds_utc=`expr $start_seconds + $offset_seconds`
+            start_time_utc=`date -d @$start_seconds_utc "+%H:%M:%S"`
+
+            stop_seconds=`date -d "$stop_time" +%s`
+            stop_seconds_utc=`expr $stop_seconds + $offset_seconds`
+            stop_time_utc=`date -d @$stop_seconds_utc "+%H:%M:%S"`
+
+            _cmd_line="$_cmd_line --timestart $start_time_utc --timestop $stop_time_utc "
+
+            [ "$start_date" != "" -a "$stop_date" != "" ] && {
+                start_date_seconds=`date -d "$start_date" +%s`
+                if [ $start_date_seconds -gt $start_seconds_utc ]; then
+                    date_seconds_utc=`expr $start_date_seconds - 86400`
+                    start_date_utc=`date -d @$date_seconds_utc "+%Y-%m-%d"`
+                fi
+                date_next_day=0
+                if [ $(`expr ${start_date_seconds} + 86400`) -le $start_seconds_utc ]; then
+                    date_seconds_utc=`expr $start_date_seconds + 86400`
+                    start_date_utc=`date -d @$date_seconds_utc "+%Y-%m-%d"`
+                    date_next_day=86400
+                fi
+                stop_date_seconds=`date -d "$stop_date" +%s`
+                if [ $stop_date_seconds -gt $(`expr ${stop_seconds_utc} + 86400`) ]; then
+                    date_seconds_utc=`expr $stop_date_seconds - 86400`
+                    stop_date_utc=`date -d @$date_seconds_utc "+%Y-%m-%d"`
+                fi
+                if [ $date_next_day -gt 0 ]; then
+                    date_seconds_utc=`expr $stop_date_seconds + $date_next_day`
+                    stop_date_utc=`date -d @$date_seconds_utc "+%Y-%m-%d"`
+                fi
+            }
         }
 
         #everyday equals all 7 days in one week
@@ -384,11 +482,11 @@ parse_device()
 
         #once
         [ "$start_date" != "" -a "$stop_date" != "" ] && {
-           _cmd_line="$_cmd_line --datestart $start_date --datestop $stop_date "
+           _cmd_line="$_cmd_line --datestart $start_date_utc --datestop $stop_date_utc "
         }
 
-        iptables -t filter -I $pctl_filter_device_table -p udp $_cmd_line --kerneltz -j REJECT 1>/dev/null
-        iptables -t filter -I $pctl_filter_device_table -p tcp $_cmd_line --kerneltz -j REJECT 1>/dev/null
+        iptables -t filter -I $pctl_filter_device_table -p udp $_cmd_line -j REJECT 1>/dev/null
+        iptables -t filter -I $pctl_filter_device_table -p tcp $_cmd_line -j REJECT 1>/dev/null
     done
 
     return 0;

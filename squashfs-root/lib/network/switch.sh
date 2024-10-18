@@ -2,6 +2,11 @@
 . /lib/functions.sh
 config_load misc
 
+#fid
+lan_fid="1"
+wan_fid="2"
+iptv_fid="3"
+
 restore6855Esw()
 {
 	echo "restore GSW to dump switch mode"
@@ -31,6 +36,14 @@ restore6855Esw()
 
 config6855Esw()
 {
+    #lan and wan vid
+    lan_vid=$(uci -q get mi_iptv.vid.lan)
+    wan_vid=$(uci -q get mi_iptv.vid.wan)
+    [ -z "$lan_vid" ] && lan_vid="1"
+    [ -z "$wan_vid" ] && wan_vid="2"
+
+    switch vlan clear
+
 	#LAN/WAN ports as security mode
 	switch reg w 2004 ff0003 #port0
 	switch reg w 2104 ff0003 #port1
@@ -91,8 +104,26 @@ config6855Esw()
 		switch reg w 2514 10002 #port5
 		switch reg w 2614 10001 #port6
 		#VLAN member port
-		switch vlan set 0 1 11110011
-		switch vlan set 1 2 00001101
+		switch vlan set 0 $lan_vid 11110011
+		switch vlan set 1 $wan_vid 00001101
+		fi
+	elif [ "$1" = "LLLWL" ]; then
+		if [ "$CONFIG_RAETH_SPECIAL_TAG" == "y" ]; then
+			: # Configuration not available yet.
+		else
+		#set PVID
+        switch vlan pvid 0 $lan_vid
+        switch vlan pvid 1 $lan_vid
+        switch vlan pvid 2 $lan_vid
+        switch vlan pvid 3 $wan_vid
+        switch vlan pvid 4 $lan_vid
+        switch vlan pvid 5 $wan_vid
+        switch vlan pvid 6 $lan_vid
+        switch vlan pvid 7 $lan_vid
+
+		#VLAN member port
+		switch vlan set $lan_fid $lan_vid 11100011
+		switch vlan set $wan_fid $wan_vid 00010101
 		fi
 	elif [ "$1" = "WLLLL" ]; then
 		if [ "$CONFIG_RAETH_SPECIAL_TAG" == "y" ]; then
@@ -107,8 +138,8 @@ config6855Esw()
 		switch reg w 2514 10002 #port5
 		switch reg w 2614 10001 #port6
 		#VLAN member port
-		switch vlan set 0 1 01111011
-		switch vlan set 0 2 10000101
+		switch vlan set 0 $lan_vid 01111011
+		switch vlan set 0 $wan_vid 10000101
 		fi
 	elif [ "$1" = "LWLLL" ]; then
 		if [ "$CONFIG_RAETH_SPECIAL_TAG" == "y" ]; then
@@ -123,8 +154,8 @@ config6855Esw()
 		switch reg w 2514 10002 #port5
 		switch reg w 2614 10001 #port6
 		#VLAN member port
-		switch vlan set 0 1 10111011
-		switch vlan set 0 2 01000101
+		switch vlan set 0 $lan_vid 10111011
+		switch vlan set 0 $wan_vid 01000101
 		fi
 	elif [ "$1" = "W1234" ]; then
 		echo "W1234"
@@ -220,6 +251,9 @@ setup_switch()
 {
 	config_load xiaoqiang
 	config_get apmode common NETMODE
+    iptv_tag=$(uci -q get mi_iptv.settings.internet_tag)
+    data_tag=$(uci -q get mi_iptv.settings.data_tag)
+	
 	echo "setup switch for apmode $apmode"
 	mode=`nvram get mode`
 	echo "setup switch for mode $mode"
@@ -242,23 +276,6 @@ setup_switch()
 		echo "WAN port $wan_port"
 		echo "LAN port $lan_ports"
 
-		local internet_tag=$(uci -q get mi_iptv.settings.internet_tag)
-		local internet_vid=$(uci -q get mi_iptv.settings.internet_vid)
-		local miptv="mclose"
-
-		if [ "$internet_tag" == "1" ]; then
-			local rmode=$(uci -q get xiaoqiang.common.NETMODE)
-			if [ "$rmode" = "lanapmode" -o "$rmode" = "wifiapmode" -o "$rmode" = "whc_re" ]; then
-				miptv="mclose"
-			else
-				if [ $internet_vid -le 0 -o $internet_vid -gt 4094 ]; then
-					miptv="mclose"
-				else
-					miptv="mopen"
-				fi
-			fi
-		fi
-
 		case $wan_port in
 			0)
 				echo "Set to WLLLL"
@@ -268,12 +285,22 @@ setup_switch()
 				echo "Set to LWLLL"
 				config6855Esw LWLLL
 				;;
+			3)
+				echo "Set to LLLWL"
+				config6855Esw LLLWL
+
+                #set iptv or internet data vlan for R4AV2
+                if [ "$iptv_tag" == "1" -o "$data_tag" == "1" ] && [ "$apmode" != "wifiapmode" ]; then
+
+                    setup_switch_for_iptv_internet_vlan(){}
+                    . /lib/network/mi_iptv_switch.sh
+                    setup_switch_for_iptv_internet_vlan
+                fi
+
+				;;
 			4)
 				echo "Set to LLLLW"
 				config6855Esw LLLLW
-				if [ "$miptv" == "mopen" ]; then
-					/etc/init.d/mi_iptv start
-				fi
 				;;
 			*)
 				echo "Please set sw_wan_port in misc file."

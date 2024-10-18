@@ -1,35 +1,44 @@
 #!/bin/sh
 PPP_IPPARAM="$6"
-lockfile="/var/run/ppp-up.lock"
 
 . /lib/netifd/netifd-proto.sh
+proto_init_update "$IFNAME" 1 1
+proto_set_keep 1
+[ -n "$PPP_IPPARAM" ] && {
+	[ -n "$LLLOCAL" ] && proto_add_ipv6_address "$LLLOCAL" 128
+}
+proto_send_update "$PPP_IPPARAM"
 
-ppp_lock() {
-    trap "lock -u $lockfile; exit 0" SIGHUP SIGINT SIGTERM
-    # try for some seconds
-    for i in $(seq 1 5); do
-        lock -n $lockfile && return 0
-        sleep 1
-    done
-    return 1
+[ -d /etc/ppp/ip-up.d ] && {
+	for SCRIPT in /etc/ppp/ip-up.d/*
+	do
+		[ -x "$SCRIPT" ] && "$SCRIPT" "$@"
+	done
 }
 
-ppp_unlock() {
-    lock -u $lockfile
-}
+if [ -n "$AUTOIPV6" ]; then
+	ZONE=$(fw3 -q network $PPP_IPPARAM 2>/dev/null)
 
-ppp_lock && {
-    logger -p9 -t ppp "ppp6-up update interface, $@"
-    proto_init_update "$IFNAME" 1 1
-    proto_set_keep 1
-    [ -n "$PPP_IPPARAM" ] && {
-        [ -n "$LLLOCAL" ] && proto_add_ipv6_address "$LLLOCAL" 128
-    }
-    proto_send_update "$PPP_IPPARAM"
+	json_init
+	json_add_string name "${PPP_IPPARAM}_6"
+	json_add_string ifname "@$PPP_IPPARAM"
+	json_add_string proto "dhcpv6"
+	[ -n "$ZONE" ] && json_add_string zone "$ZONE"
+	[ -n "$EXTENDPREFIX" ] && json_add_string extendprefix 1
+	[ -n "$IP6TABLE" ] && json_add_string ip6table $IP6TABLE
+#	[ -n "$PEERDNS" ] && json_add_boolean peerdns $PEERDNS
+	peerdns=$(uci -q get ipv6.dns.peerdns)
+	json_add_boolean peerdns $peerdns
+        if [ "$peerdns" == "0" ]; then
+		proto_init_dns_server_ex
+		dnslist=$(uci -q get ipv6.dns.dns)
+		var=${dnslist//,/ }
+		for dns in $var; do
+                	proto_add_dns_server_ex $dns
+		done
+		proto_update_dns_server_ex
+	fi
 
-    ppp_unlock
-
-    return 0
-}
-
-logger -p9 -t ppp "ppp6-up NOT update interface for no locker, $@"
+	json_close_object
+	ubus call network add_dynamic "$(json_dump)"
+fi

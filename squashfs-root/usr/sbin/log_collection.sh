@@ -5,6 +5,9 @@ LOG_TMP_MEMINFO="/tmp/meminfo.log"
 LOG_TMP_FILE_PATH="/tmp/xiaoqiang.log"
 LOG_ZIP_FILE_PATH="/tmp/log.tar.gz"
 
+CONFIG_DIR="/etc/config/"
+CONFIG_TMP_DIR="/tmp/ucicfg/etc/config/"
+WIRELESS_TMP_PATH="/tmp/ucicfg/etc/config/wireless"
 WIRELESS_FILE_PATH="/etc/config/wireless"
 WIRELESS_STRIP='/tmp/wireless.conf'
 NETWORK_FILE_PATH="/etc/config/network"
@@ -25,6 +28,7 @@ TMP_WIFI_LOG_ANALYSIS="/tmp/wifi_analysis.log"
 TMP_WIFI_LOG="/tmp/wifi.log"
 DHCP_LEASE="/tmp/dhcp.leases"
 IPTABLES_SAVE="/tmp/iptables_save.log"
+QOS_TC_SAVE="/tmp/qos_tc_conf.log"
 TRAFFICD_LOG="/tmp/trafficd.log"
 PLUGIN_LOG="/tmp/plugin.log"
 LOG_MEMINFO="/proc/meminfo"
@@ -107,9 +111,14 @@ ps -w >> $LOG_TMP_FILE_PATH
 
 echo "==========nvram" >> $NVRAM_FILE_PATH
 nvram show >> $NVRAM_FILE_PATH
+sed -i "/^nv_wifi_pwd=/cnv_wifi_pwd=******" $NVRAM_FILE_PATH
 
 echo "==========bdata" >> $BDATA_FILE_PATH
 bdata show >> $BDATA_FILE_PATH
+
+mkdir -p $CONFIG_TMP_DIR
+cp -rf $CONFIG_DIR* $CONFIG_TMP_DIR
+rm -rf $WIRELESS_TMP_PATH 2>/dev/null
 
 
 log_exec()
@@ -170,6 +179,7 @@ elif [ "$hardware" = "R3D" ]; then
         log_exec "iwinfo wl$i freqlist >> $LOG_TMP_FILE_PATH"
         log_exec "wlanconfig wl$i list >> $LOG_TMP_FILE_PATH"
         log_exec "80211stats -a -i wl$i >> $LOG_TMP_FILE_PATH"
+	log_exec "iwpriv wl$i get_chutil"
 	log_exec "iwpriv wl$i txrx_fw_stats 1"
 	log_exec "iwpriv wl$i txrx_fw_stats 3"
 	log_exec "iwpriv wl$i txrx_fw_stats 19"
@@ -178,38 +188,64 @@ elif [ "$hardware" = "R3D" ]; then
     /usr/sbin/getneighbor.sh ${LOG_TMP_FILE_PATH} > /dev/null 2>&1
 
 elif [ "$hardware" = "D01" ]; then
+    log_exec "iwconfig"
     for i in `seq 0 1`; do
         # wifi
-        log_exec "athstats -i wifi$i >> $LOG_TMP_FILE_PATH"
+        log_exec "athstats -i wifi$i"
     done
 
-    local list="0 1 13"
+    local list="0 1"
     ifconfig wl14 >/dev/null 2>&1
     [ $? = 0 ] && list="$list 14"
-    whcal isre && list="$list 01 11"
-    echo "list:$list" >> $LOG_TMP_FILE_PATH
+    echo "========== list:$list" >> $LOG_TMP_FILE_PATH
 
     for i in $list; do
-        echo "  @@@@ iwinfo wl$i @@@@" >> $LOG_TMP_FILE_PATH
-        echo "  @@@@ iwinfo wl$i @@@@" > /dev/console
+        echo "========== @@@@ iwinfo wl$i @@@@" >> $LOG_TMP_FILE_PATH
+        echo "========== @@@@ iwinfo wl$i @@@@" > /dev/console
         # wl
-        log_exec "iwinfo wl$i info >> $LOG_TMP_FILE_PATH"
-        log_exec "iwinfo wl$i assolist >> $LOG_TMP_FILE_PATH"
-        log_exec "iwinfo wl$i txpowerlist >> $LOG_TMP_FILE_PATH"
-        log_exec "iwinfo wl$i freqlist >> $LOG_TMP_FILE_PATH"
-        log_exec "wlanconfig wl$i list >> $LOG_TMP_FILE_PATH"
-        log_exec "80211stats -a -i wl$i >> $LOG_TMP_FILE_PATH"
-	log_exec "iwpriv wl$i txrx_fw_stats 1"
-	log_exec "iwpriv wl$i txrx_fw_stats 3"
-	log_exec "iwpriv wl$i txrx_fw_stats 19"
-	log_exec "iwpriv wl$i txrx_fw_stats 20"
+        log_exec "iwinfo wl$i info"
+        log_exec "iwinfo wl$i assolist"
+        log_exec "iwinfo wl$i txpowerlist"
+        log_exec "iwinfo wl$i freqlist"
+        log_exec "wlanconfig wl$i list"
+        log_exec "wlanconfig wl$i hmwds dump-wdstable"
+        log_exec "80211stats -a -i wl$i"
+        log_exec "iwlist wl$i channel"
+        log_exec "iwpriv wl$i get_chutil"
+        log_exec "iwpriv wl$i txrx_fw_stats 1"
+        log_exec "iwpriv wl$i txrx_fw_stats 3"
+        log_exec "iwpriv wl$i txrx_fw_stats 19"
+        log_exec "iwpriv wl$i txrx_fw_stats 20"
+        [ $i == 0 -o $i == 1 ] && {
+            radioidx=$((1 - i))
+            log_exec "hostapd_cli -p /var/run/hostapd-wifi$radioidx -i wl$i get_config | grep -v \"passphrase=\""
+        }
     done
-    # TODO other wifi 
+
+    whcal isre && {
+        local sta_list="01 11"
+        echo "========== sta_list:$sta_list" >> $LOG_TMP_FILE_PATH
+        for i in $sta_list; do
+            echo "========== @@@@ iwinfo wl$i @@@@" >> $LOG_TMP_FILE_PATH
+            echo "========== @@@@ iwinfo wl$i @@@@" > /dev/console
+            log_exec "iwinfo wl$i info"
+            log_exec "iwconfig wl$i"
+            log_exec "wpa_cli -p /var/run/wpa_supplicant-wl$i -i wl$i status"
+            log_exec "wpa_cli -p /var/run/wpa_supplicant-wl$i -i wl$i list_networks"
+        done
+    }
+    # TODO other wifi
     /usr/sbin/getneighbor.sh ${LOG_TMP_FILE_PATH} > /dev/null 2>&1
 
 
     ### log info for whc serives and state
     flog_exec "  @@@@ whc info log @@@@" "$WHC_LOG"
+    flog_exec "#whc genenal show: " "$WHC_LOG"
+    whcal role >> $WHC_LOG
+    whcal status >> $WHC_LOG
+    whcal isre && {
+        whcal getmetric; echo "metric $?" >> $WHC_LOG
+    }
     flog_exec "#hyctl show: " "$WHC_LOG"
     hyctl show >> $WHC_LOG
     flog_exec "#hyctl gethatbl br-lan: " "$WHC_LOG"
@@ -220,13 +256,16 @@ elif [ "$hardware" = "D01" ]; then
     flog_exec "#brctl showstp detail info: " "$WHC_LOG"
     brctl showstp br-lan >> $WHC_LOG
 
-    flog_exec "###hyd info:td s2, pc s D, hy ha, hy hd, he s, stadb s phy, bandmon s, \
+    flog_exec "###hyd info:td s2, pc s A,pc s D, hy ha, hy hd, he s, stadb s, stadb s phy, bandmon s, \
 estimator s, steeralg s, steerexec s, ps s, ps p, ps f" "$WHC_LOG"
     (echo "@hyt_td_s2:"; echo td s2; sleep 3) | hyt >> $WHC_LOG
-    (echo "@pc_s_D:";echo pc s D; sleep 2) | hyt >> $WHC_LOG
+    (echo "@pc_s_A:";echo pc s A; sleep 2) | hyt >> $WHC_LOG
+    (echo "@pc_s_D:";echo pc s D; sleep 4) | hyt >> $WHC_LOG
     (echo "@hy_ha_hd:"; echo hy ha; sleep 3; echo hy hd; sleep 2) | hyt >> $WHC_LOG
     (echo "@he_s:"; echo he u; sleep 1; echo he s; sleep 3 ) | hyt >> $WHC_LOG
     (echo "@ps_s_p_f:"; echo ps s; sleep 1; echo ps p; sleep 1; echo ps f; sleep 1) | hyt >> $WHC_LOG
+    (echo "@steerexec_s:"; echo steerexec s; sleep 3 ) | hyt >> $WHC_LOG
+    (echo "@stadb_s:"; echo stadb s; sleep 3 ) | hyt >> $WHC_LOG
     (echo "@stadb_s_phy:"; echo stadb s phy; sleep 3 ) | hyt >> $WHC_LOG
     (echo "@bandmon_s:"; echo bandmon s; sleep 1) | hyt >> $WHC_LOG
     (echo "@estimator_s"; echo estimator s; sleep 1) | hyt >> $WHC_LOG
@@ -239,13 +278,13 @@ estimator s, steeralg s, steerexec s, ps s, ps p, ps f" "$WHC_LOG"
     # plchost info
     flog_exec "### plc info"  "$WHC_LOG"
     flog_exec "#plchost -r" "$WHC_LOG"
-    timeout -t 5 plchost -i br-lan -r 2>&1 >> $WHC_LOG
+    xqplc plchost -i br-lan -r >> $WHC_LOG
     flog_exec "#plchost -m" "$WHC_LOG"
-    timeout -t 5 plchost -i br-lan -m 2>&1 >> $WHC_LOG
+    xqplc plchost -i br-lan -m >> $WHC_LOG
     flog_exec "#plchost -I" "$WHC_LOG"
-    timeout -t 5 plchost -i br-lan -I 2>&1 >> $WHC_LOG
+    xqplc plchost -i br-lan -I >> $WHC_LOG
     flog_exec "#plctool -m" "$WHC_LOG"
-    timeout -t 5 plctool -i br-lan -m 2>&1 >> $WHC_LOG
+    xqplc plctool -i br-lan -m >> $WHC_LOG
 
 else
 #On R1CM, The follow cmd will print result to dmesg.
@@ -263,7 +302,6 @@ else
     /usr/sbin/getneighbor.sh ${LOG_TMP_FILE_PATH} > /dev/null 2>&1
 
 fi
-
 
 
 #On R1D, the follow print to UART.
@@ -284,6 +322,11 @@ cat $LOG_SLABINFO >> $LOG_TMP_FILE_PATH
     /usr/sbin/et port_status >> $LOG_TMP_FILE_PATH
 }
 
+[ -f "/usr/sbin/ethstt" ] && {
+    echo "==========et port_status:(MTK)" >> $LOG_TMP_FILE_PATH
+    /usr/sbin/ethstt -x >> $LOG_TMP_FILE_PATH
+}
+
 [ -b /dev/sda -a "SATA" = "`getdisk bus sda`" ] && {
     echo "==========smartctl info:" >> $LOG_TMP_FILE_PATH
     smartctl --all /dev/sda >> $LOG_TMP_FILE_PATH
@@ -292,10 +335,29 @@ cat $LOG_SLABINFO >> $LOG_TMP_FILE_PATH
 #dump ppp and vpn status
 log_exec "cat /tmp/pppoe.log"
 log_exec "cat /tmp/vpn.stat.msg"
-log_exec "ubus call turbo_ccgame get_pass"
 
 
-iptables-save -c > $IPTABLES_SAVE
+#iptables/ip6tables
+[ -f "/usr/sbin/iptables" ] && {
+    echo "iptables-save -c =====================" >> $IPTABLES_SAVE
+    iptables-save -c >> $IPTABLES_SAVE
+}
+
+[ -f "/usr/sbin/ip6tables" ] && {
+    echo "ip6tables-save -c =====================" >> $IPTABLES_SAVE
+    ip6tables-save -c >> $IPTABLES_SAVE
+}
+
+#qos tc info
+[ -f "/usr/sbin/qos_monitor" ] && {
+    echo "==================qos_monitor" >> $QOS_TC_SAVE
+    /usr/sbin/qos_monitor -b >> $QOS_TC_SAVE
+}
+
+[ -f "/usr/sbin/qos_monitor_hwqos" ] && {
+    echo "==================qos_monitor_hwqos" >> $QOS_TC_SAVE
+    /usr/sbin/qos_monitor_hwqos -b >> $QOS_TC_SAVE
+}
 
 echo "    trafficd hw info:" > $TRAFFICD_LOG
 ubus call trafficd hw '{"debug":true}' >> $TRAFFICD_LOG
@@ -321,13 +383,14 @@ MICLOUD_LOG_PATH="/userdisk/data/.pluginConfig/2882303761517344979/micloudBackup
 
 # busybox's tar requires every source file existing!!
 [ -e "$IPTABLES_SAVE" ] || IPTABLES_SAVE=
+[ -e "$QOS_TC_SAVE" ] || QOS_TC_SAVE=
 [ -e "$TRAFFICD_LOG" ] || TRAFFICD_LOG=
 [ -e "$PLUGIN_LOG" ] || PLUGIN_LOG=
 [ -e "$NETWORK_STRIP" ] || NETWORK_STRIP=
 [ -e "$MICLOUD_LOG" ] || MICLOUD_LOG=
 [ -e "$NVRAM_FILE_PATH" ] || NVRAM_FILE_PATH=
 [ -e "$BDATA_FILE_PATH" ] || BDATA_FILE_PATH=
-move_files="$LOG_TMP_MEMINFO $LOG_TMP_FILE_PATH $IPTABLES_SAVE $TRAFFICD_LOG $PLUGIN_LOG $NETWORK_STRIP $WIRELESS_STRIP $MICLOUD_LOG $NVRAM_FILE_PATH $BDATA_FILE_PATH"
+move_files="$LOG_TMP_MEMINFO $LOG_TMP_FILE_PATH $IPTABLES_SAVE $QOS_TC_SAVE $TRAFFICD_LOG $PLUGIN_LOG $NETWORK_STRIP $WIRELESS_STRIP $MICLOUD_LOG $NVRAM_FILE_PATH $BDATA_FILE_PATH"
 [ -e "$DHCP_LEASE" ] || DHCP_LEASE=
 [ -e "$DNSMASQ_CONF" ] || DNSMASQ_CONF=
 [ -e "$MACFILTER_FILE_PATH" ] || MACFILTER_FILE_PATH=
@@ -344,6 +407,7 @@ dup_files="$DHCP_LEASE $DNSMASQ_CONF $MACFILTER_FILE_PATH $CRONTAB $QOS_CONF $WI
 [ -e "$GZ_LOGS" ] || GZ_LOGS=
 [ -e "$LOG_DIR" ] || LOG_DIR=
 [ -e "$TMP_WIFI_LOG" ] || TMP_WIFI_LOG=
+[ -e "$CONFIG_TMP_DIR" ] || CONFIG_TMP_DIR=
 
 
 
@@ -357,12 +421,17 @@ fi
     redundancy_files="$redundancy_files "/tmp/log/" "/tmp/run/""
     move_files="$move_files $WHC_LOG"
 
+    # add whc son conf file
     for ff in hyd-*.conf lbd.conf plc.conf resolv.conf; do
         conf_files="$conf_files `ls /tmp/$ff 2>/dev/null`"
     done
-
     dup_files="$dup_files $conf_files"
+
+    # add rc.done rc.timing
+    dup_files="$dup_files /tmp/rc.done /tmp/rc.timing"
 }
 
-tar -zcf $LOG_ZIP_FILE_PATH $move_files $dup_files $redundancy_files
+tar -zcf $LOG_ZIP_FILE_PATH $move_files $dup_files $redundancy_files $CONFIG_TMP_DIR
 rm -f $move_files > /dev/null
+rm -rf $CONFIG_TMP_DIR > /dev/null
+

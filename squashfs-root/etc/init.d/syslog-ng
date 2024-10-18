@@ -1,37 +1,31 @@
 #!/bin/sh /etc/rc.common
-# Copyright (C) 2006-2011 OpenWrt.org
+# Copyright (C) 2006-2016 OpenWrt.org
 
-#01 is fstab
-START=02
+START=50
+PROG=/usr/sbin/syslog-ng
+PROG2=/usr/sbin/syslog-ng-ctl
 
-miwifi_crash_syslog_conf_init() {
-	KOPATH="/lib/modules/$(uname -r)/crash_syslog.ko"
-	[ -f "$KOPATH" ] || return 0
+SERVICE_USE_PID=1
+SERVICE_PID_FILE=/var/run/syslog-ng.pid
 
-	insmod "$KOPATH"
-	[ -e /proc/xiaoqiang/xq_syslog ] || return 0
-
-	# Has crash syslog capability. modify config
-	grep -q xq_syslog /etc/syslog-ng.conf
-	[ "$?" = "0" ] && return 0
-
-	cp /etc/syslog-ng-cs.conf /etc/syslog-ng.conf
-}
+config_file=/etc/syslog-ng.conf
 
 start() {
-	[ -f /etc/syslog-ng.conf ] || return 1
+	[ -f $config_file ] || return 1
 
-	miwifi_crash_syslog_conf_init
+	if ! $PROG -s 2>/dev/null ; then
+		echo "Couldn't parse $(basename $config_file)" >&2
+		exit 1
+	fi
 
-	echo -1000 > /proc/$$/oom_score_adj
-	service_start /usr/sbin/syslog-ng
-	return $?
+	service_start $PROG --process-mode background \
+		-p $SERVICE_PID_FILE
 }
 
 stop() {
-	service_stop /usr/sbin/syslog-ng
+	service_stop $PROG
 }
 
 reload() {
-	service_reload /usr/sbin/syslog-ng
+	$PROG2 reload
 }

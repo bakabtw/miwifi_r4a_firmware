@@ -79,7 +79,7 @@ case "$fun" in
 	fi
 	for i in "$@"
 	do
-	    local op=$(echo $i | cut -f 1 -d'=' | tr "[A-Z]" "[a-z]")
+	    op=$(echo $i | cut -f 1 -d'=' | tr "[A-Z]" "[a-z]")
 	    case $op in
 		lan)
 		    lan=$(echo ${i#*=} | tr "[A-Z]" "[a-z]")
@@ -253,7 +253,7 @@ getrule(){
 	fi
 	if [ -z "$mac" -a -z "$ccmac" ]
 	then
-		$UCI $PARAMETERAPPEND show macfilter |awk -F'\.' '{key[$1$2]=(key[$1$2]";"$3)}END{for(i in key){if(key[i] ~ "mac"){print key[i]}}}' |sed 's/^;//g'
+		$UCI $PARAMETERAPPEND show macfilter |awk -F'\.' '{key[$1$2]=(key[$1$2]";"$3)}END{for(i in key){if(key[i] ~ "mac"){print key[i]}}}' |sed 's/^;//g'|sed $'s/\'//g'
 	else
 		if [ -z "$mac" -a -n "$ccmac" ]
 			then

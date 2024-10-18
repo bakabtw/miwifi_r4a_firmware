@@ -1,4 +1,5 @@
 NETIFD_MAIN_DIR="${NETIFD_MAIN_DIR:-/lib/netifd}"
+PROTO_DEFAULT_OPTIONS="defaultroute peerdns metric"
 
 . /usr/share/libubox/jshn.sh
 . $NETIFD_MAIN_DIR/utils.sh
@@ -13,6 +14,22 @@ proto_config_add_string() {
 
 proto_config_add_boolean() {
 	config_add_boolean "$@"
+}
+
+proto_config_add_array() {
+	config_add_array "$@"
+}
+
+proto_config_add_defaults() {
+	proto_config_add_boolean "defaultroute"
+	proto_config_add_boolean "peerdns"
+	proto_config_add_int "metric"
+}
+
+proto_add_dynamic_defaults() {
+	[ -n "$defaultroute" ] && json_add_boolean defaultroute "$defaultroute"
+	[ -n "$peerdns" ] && json_add_boolean peerdns "$peerdns"
+	[ -n "$metric" ] && json_add_int metric "$metric"
 }
 
 _proto_do_teardown() {
@@ -90,6 +107,20 @@ proto_add_dns_server() {
 	append PROTO_DNS "$address"
 }
 
+proto_init_dns_server_ex() {
+	PROTO_DNS_CON=
+}
+
+proto_add_dns_server_ex() {
+	local address="$1"
+
+	append PROTO_DNS_CON "$address"
+}
+
+proto_update_dns_server_ex() {
+	_proto_push_array "dns" "$PROTO_DNS_CON" _proto_push_string
+}
+
 proto_add_dns_search() {
 	local address="$1"
 
@@ -120,8 +151,10 @@ proto_add_ipv4_route() {
 	local target="$1"
 	local mask="$2"
 	local gw="$3"
+	local source="$4"
+	local metric="$5"
 
-	append PROTO_ROUTE "$target/$mask/$gw//"
+	append PROTO_ROUTE "$target/$mask/$gw/$metric///$source"
 }
 
 proto_add_ipv6_route() {
@@ -131,8 +164,9 @@ proto_add_ipv6_route() {
 	local metric="$4"
 	local valid="$5"
 	local source="$6"
+	local table="$7"
 
-	append PROTO_ROUTE6 "$target/$mask/$gw/$metric/$valid/$source"
+	append PROTO_ROUTE6 "$target/$mask/$gw/$metric/$valid/$table/$source"
 }
 
 proto_add_ipv6_prefix() {
@@ -210,6 +244,8 @@ _proto_push_route() {
 	str="${str#*/}"
 	local valid="${str%%/*}"
 	str="${str#*/}"
+	local table="${str%%/*}"
+	str="${str#*/}"
 	local source="${str}"
 
 	json_add_object ""
@@ -219,6 +255,7 @@ _proto_push_route() {
 	[ -n "$metric" ] && json_add_int metric "$metric"
 	[ -n "$valid" ] && json_add_int valid "$valid"
 	[ -n "$source" ] && json_add_string source "$source"
+	[ -n "$table" ] && json_add_string table "$table"
 	json_close_object
 }
 
@@ -356,8 +393,10 @@ init_proto() {
 		dump)
 			add_protocol() {
 				no_device=0
+				no_proto_task=0
 				available=0
 				renew_handler=0
+				teardown_on_l3_link_down=0
 
 				add_default_handler "proto_$1_init_config"
 
@@ -367,8 +406,11 @@ init_proto() {
 				eval "proto_$1_init_config"
 				json_close_array
 				json_add_boolean no-device "$no_device"
+				json_add_boolean no-proto-task "$no_proto_task"
 				json_add_boolean available "$available"
 				json_add_boolean renew-handler "$renew_handler"
+				json_add_boolean lasterror "$lasterror"
+				json_add_boolean teardown-on-l3-link-down "$teardown_on_l3_link_down"
 				json_dump
 			}
 		;;

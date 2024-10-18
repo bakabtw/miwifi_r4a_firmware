@@ -58,7 +58,7 @@ let timeout=$timeout+1-1 2>/dev/null
 test $? -ne 0 -a "$timeout" != '0' && timeout=5
 test $timeout -le 0 && timeout=5
 
-local mesh_mode=$(uci get xiaoqiang.common.NETMODE -q)
+mesh_mode=$(uci -q get xiaoqiang.common.NETMODE)
 echo $mesh_mode
 if  [ "$mesh_mode" != "" ] && [ "$mesh_mode" != "whc_cap" ]; then
     autowan_check_log "autowan do not check on mesh child."
@@ -81,7 +81,10 @@ if [ $? -eq 0 ]; then
     $set_switch_on >/dev/null 2>&1
     $set_switch_commit >/dev/null 2>&1
 
-    # call start script
+    # clean nvram set first, as this just call by APP.
+    nvram set nv_wan_type=null
+    nvram commit
+    # start autowan
     /etc/init.d/autowan start
     autowan_check_log " first start, and do all port check."
     autowan_check_log " sleep $timeout"

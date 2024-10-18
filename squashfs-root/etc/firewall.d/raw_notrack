@@ -1,0 +1,7 @@
+# do not conntrack for lo
+#
+iptables -t raw -D PREROUTING -i lo -j CT --notrack 2>&-
+iptables -t raw -D OUTPUT -o lo -j CT --notrack 2>&-
+iptables -t raw -I PREROUTING -i lo -j CT --notrack
+iptables -t raw -I OUTPUT -o lo -j CT --notrack
+

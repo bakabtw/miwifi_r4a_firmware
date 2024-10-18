@@ -3,137 +3,134 @@
 [ -x /usr/sbin/xl2tpd ] || exit 0
 
 [ -n "$INCLUDE_ONLY" ] || {
-    . /lib/functions.sh
-    . ../netifd-proto.sh
-    init_proto "$@"
+	. /lib/functions.sh
+	. ../netifd-proto.sh
+	. ../tools.sh
+	init_proto "$@"
 }
 
 proto_l2tp_init_config() {
-    proto_config_add_string "username"
-    proto_config_add_string "password"
-    proto_config_add_string "keepalive"
-    proto_config_add_string "pppd_options"
-    proto_config_add_boolean "ipv6"
-    proto_config_add_int "mtu"
-    proto_config_add_string "server"
-    proto_config_add_int "maxtries"
-    available=1
-    no_device=1
+	proto_config_add_string "username"
+	proto_config_add_string "password"
+	proto_config_add_string "keepalive"
+	proto_config_add_string "pppd_options"
+	proto_config_add_boolean "ipv6"
+	proto_config_add_int "mtu"
+	proto_config_add_int "checkup_interval"
+	proto_config_add_string "server"
+	available=1
+	no_device=1
+	no_proto_task=1
+	teardown_on_l3_link_down=1
 }
 
 proto_l2tp_setup() {
-    local config="$1"
-    local iface="$2"
-    local optfile="/tmp/l2tp/options.${config}"
+	local interface="$1"
+	local optfile="/tmp/l2tp/options.${interface}"
+    local static_optfile="/etc/ppp/options.xl2tpd"
+	local ip serv_addr server host
 
-    local ip serv_addr server
-    json_get_var server server && {
-        for ip in $(resolveip -t 5 "$server"); do
-            (proto_add_host_dependency "$config" "$ip")
-            serv_addr=1
-        done
+	json_get_var server server
+	host="${server%:*}"
+	for ip in $(resolveip -t 5 "$host"); do
+		( proto_add_host_dependency "$interface" "$ip" )
+		serv_addr=1
+	done
+	[ -n "$serv_addr" ] || {
+		echo "Could not resolve server address" >&2
+		sleep 5
+		proto_setup_failed "$interface"
+		exit 1
+	}
+
+	# Start and wait for xl2tpd
+	if [ ! -p /var/run/xl2tpd/l2tp-control -o -z "$(pidof xl2tpd)" ]; then
+		/etc/init.d/xl2tpd restart
+
+		local wait_timeout=0
+		while [ ! -p /var/run/xl2tpd/l2tp-control ]; do
+			wait_timeout=$(($wait_timeout + 1))
+			[ "$wait_timeout" -gt 5 ] && {
+				echo "Cannot find xl2tpd control file." >&2
+				proto_setup_failed "$interface"
+				exit 1
+			}
+			sleep 1
+		done
+	fi
+
+	local ipv6 keepalive username password pppd_options mtu
+	json_get_vars ipv6 keepalive username password pppd_options mtu
+	[ "$ipv6" = 1 ] || ipv6="1"
+
+	local interval="${keepalive##*[, ]}"
+	[ "$interval" != "$keepalive" ] || interval=5
+
+	keepalive="${keepalive:+lcp-echo-interval $interval lcp-echo-failure ${keepalive%%[, ]*}}"
+	username="${username:+user \"$username\" password \"$password\"}"
+	ipv6="${ipv6:++ipv6}"
+	mtu="${mtu:-1410}"
+
+    #adjust MTU/MRU by wan's MTU dynamically
+    local wan_mtu=$(get_wan_mtu)
+    [ -n "$wan_mtu" ] && {
+        wan_mtu=`expr $wan_mtu - 40`    #IP+UDP+l2tp+PPP
+        [ "$wan_mtu" -lt "$mru" ] && mtu=$wan_mtu
     }
-    [ -n "$serv_addr" ] || {
-        echo "Could not resolve server address"
-        sleep 5
-        proto_setup_failed "$config"
-        exit 1
-    }
 
-    if [ -f /proc/xqfp/dbg_switch ]; then
-        (echo 1 >/proc/xqfp/dbg_switch) &>/dev/null
-    fi
+	mtu="${mtu:+mtu $mtu mru $mtu}"
 
-    /etc/init.d/xl2tpd status 2>&- >&-
-    if [ $? -ne 0 ]; then
-        rm -f /var/run/xl2tpd/l2tp-control
-    fi
+	mkdir -p /tmp/l2tp
 
-    if [ ! -p /var/run/xl2tpd/l2tp-control ]; then
-        /etc/init.d/xl2tpd start
-    fi
+    echo > "$optfile"
+    [ -f "$static_optfile" ] && cat $static_optfile >> "$optfile"
 
-    json_get_vars ipv6 demand keepalive username password pppd_options maxtries
-    [ "$ipv6" = 1 ] || ipv6=""
-    if [ "${demand:-0}" -gt 0 ]; then
-        demand="precompiled-active-filter /etc/ppp/filter demand idle $demand"
-    else
-        demand="persist"
-    fi
+	cat <<EOF >>"$optfile"
+usepeerdns
+nodefaultroute
+ipparam "$interface"
+ifname "l2tp-$interface"
+ip-up-script /lib/netifd/ppp-up
+ipv6-up-script /lib/netifd/ppp-up
+ip-down-script /lib/netifd/ppp-down
+ipv6-down-script /lib/netifd/ppp-down
+# Don't wait for LCP term responses; exit immediately when killed.
+$keepalive
+$username
+$ipv6
+$mtu
+holdoff 0
+$pppd_options
+EOF
 
-    [ -n "$mtu" ] || json_get_var mtu mtu
-
-    # set MTU to 1400 as default
-    if [ -z "$mtu" ]; then
-        mtu="1410"
-    fi
-
-    local interval="${keepalive##*[, ]}"
-    [ "$interval" != "$keepalive" ] || interval=5
-
-    mkdir -p /tmp/l2tp
-
-    # disable LCP echo for l2tp
-    echo "lcp-echo-interval 0" >"${optfile}"
-    #echo "${keepalive:+lcp-echo-interval $interval lcp-echo-failure ${keepalive%%[, ]*}}" >"${optfile}"
-    #enable debug
-    echo "debug" >>"${optfile}"
-    echo "usepeerdns" >>"${optfile}"
-    echo "nodefaultroute" >>"${optfile}"
-    echo "${username:+user \"$username\" password \"$password\"}" >>"${optfile}"
-    echo "ipparam \"$config\"" >>"${optfile}"
-    echo "ifname \"l2tp-$config\"" >>"${optfile}"
-    echo "ip-up-script /lib/netifd/ppp-up" >>"${optfile}"
-    echo "ipv6-up-script /lib/netifd/ppp-up" >>"${optfile}"
-    echo "ip-down-script /lib/netifd/ppp-down" >>"${optfile}"
-    echo "ipv6-down-script /lib/netifd/ppp-down" >>"${optfile}"
-    # Don't wait for LCP term responses; exit immediately when killed.
-    echo "lcp-max-terminate 0" >>"${optfile}"
-    echo "${ipv6:++ipv6} ${pppd_options}" >>"${optfile}"
-    echo "${mtu:+mtu $mtu mru $mtu}" >>"${optfile}"
-    #no CCP
-    echo "noccp" >>"${optfile}"
-
-    if [ "${maxtries}" -gt "0" ]; then
-        xl2tpd-control add l2tp-${config} pppoptfile=${optfile} lns=${server} redial=yes redial timeout=20 max redials=${maxtries}
-    else
-        xl2tpd-control add l2tp-${config} pppoptfile=${optfile} lns=${server} redial=yes redial timeout=20
-    fi
-    xl2tpd-control connect l2tp-${config}
+	xl2tpd-control add l2tp-${interface} pppoptfile=${optfile} lns=${server} || {
+		echo "xl2tpd-control: Add l2tp-$interface failed" >&2
+		proto_setup_failed "$interface"
+		exit 1
+	}
+	xl2tpd-control connect l2tp-${interface} || {
+		echo "xl2tpd-control: Connect l2tp-$interface failed" >&2
+		proto_setup_failed "$interface"
+		exit 1
+	}
 }
 
 proto_l2tp_teardown() {
-    local interface="$1"
-    local optfile="/tmp/l2tp/options.${interface}"
+	local interface="$1"
+	local optfile="/tmp/l2tp/options.${interface}"
 
-    case "$ERROR" in
-    11 | 19)
-        proto_notify_error "$interface" AUTH_FAILED
-        proto_block_restart "$interface"
-        ;;
-    2)
-        proto_notify_error "$interface" INVALID_OPTIONS
-        proto_block_restart "$interface"
-        ;;
-    esac
-
-    xl2tpd-control disconnect l2tp-${interface}
-    # Wait for interface to go down
+	rm -f ${optfile}
+	if [ -p /var/run/xl2tpd/l2tp-control ]; then
+		xl2tpd-control remove l2tp-${interface} || {
+			echo "xl2tpd-control: Remove l2tp-$interface failed" >&2
+		}
+	fi
+	# Wait for interface to go down
     while [ -d /sys/class/net/l2tp-${interface} ]; do
-        sleep 1
-    done
-
-    xl2tpd-control remove l2tp-${interface}
-    rm -f ${optfile}
-
-    # here need fix memory-leak later
-    #    /etc/init.d/xl2tpd stop
-
-    if [ -f /proc/xqfp/dbg_switch ]; then
-        (echo 0 >/proc/xqfp/dbg_switch) &>/dev/null
-    fi
+	    sleep 1
+	done
 }
 
 [ -n "$INCLUDE_ONLY" ] || {
-    add_protocol l2tp
+	add_protocol l2tp
 }

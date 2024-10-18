@@ -1,48 +1,19 @@
 #!/bin/sh /etc/rc.common
 
-#for test, activate later
-START=78
-SERVICE_DAEMONIZE=1
-SERVICE_USE_PID=1
-SERVICE_WRITE_PID=1
-SERVICE_MATCH_EXEC=""
-SERVICE_DEBUG=""
-SERVICE_QUIET="1"
+START=98
+USE_PROCD=1
+PROG=/usr/sbin/netapi
 
-EXTRA_COMMANDS="/usr/sbin/netapi"
-EXECMD="/usr/sbin/netapi"
-
-start() {
-    export PROCLINE="${EXECMD}"
-    export PROCFLAG="${EXTRA_COMMANDS}"
-    export PROCNUM='1'
-    /usr/sbin/supervisord start
-    return $?
-}
-
-stop() {
-    export PROCLINE="${EXECMD}"
-    export PROCFLAG="${EXTRA_COMMANDS}"
-    /usr/sbin/supervisord stop
-    return $?
-}
-
-#running: 0, dead, 1, alive
-is_running(){
-    status
-}
-
-#status: 0, in-actived, 1, actived
-status(){
-    export PROCLINE="${EXECMD}"
-    export PROCFLAG="${EXTRA_COMMANDS}"
-    /usr/sbin/supervisord status
-}
-
-restart(){
-    export PROCLINE="${EXECMD}"
-    export PROCFLAG="${EXTRA_COMMANDS}"
-    /usr/sbin/supervisord restart
-    return $?
+start_service() {
+    netmode=`uci -q -S get xiaoqiang.common.NETMODE`
+    if [ "$netmode" = "wifiapmode" -o "$netmode" = "lanapmode" ]; then
+	return 0
+    fi
+    [ -f "$PROG" ] && {
+	procd_open_instance
+	procd_set_param command "$PROG"
+	procd_set_param respawn
+	procd_close_instance
+    }
 }
 

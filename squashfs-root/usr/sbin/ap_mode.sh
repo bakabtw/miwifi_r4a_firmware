@@ -53,7 +53,6 @@ uci -q batch <<-EOF >/dev/null
     commit network
 
     set dhcp.lan.ignore=1;
-    commit network
     commit dhcp
 EOF
 
@@ -72,7 +71,6 @@ uci -q batch <<-EOF >/dev/null
     commit network
 
     set dhcp.lan.ignore=1;
-    commit network
     commit dhcp
 EOF
 
@@ -80,7 +78,29 @@ EOF
 
 bridgeap_close_r1cm_default() {
     echo "#######################bridgeap_close_r1cm_default###############"
-uci -q batch <<-EOF >/dev/null
+    if [ -d "/proc/mt7621" ]; then
+        uci -q batch <<-EOF >/dev/null
+    delete network
+    set network.loopback=interface
+    set network.loopback.ifname=lo
+    set network.loopback.proto=static
+    set network.loopback.ipaddr=127.0.0.1
+    set network.loopback.netmask=255.0.0.0
+    set network.lan=interface
+    set network.lan.ifname=eth0
+    set network.lan.type=bridge
+    set network.lan.proto=static
+    set network.lan.ipaddr=192.168.31.1
+    set network.lan.netmask=255.255.255.0
+    set network.wan=interface
+    set network.wan.ifname=eth1
+    set network.wan.proto=dhcp
+    commit network
+    delete dhcp.lan.ignore;
+    commit dhcp
+EOF
+    else
+        uci -q batch <<-EOF >/dev/null
     delete network
     set network.loopback=interface
     set network.loopback.ifname=lo
@@ -100,6 +120,7 @@ uci -q batch <<-EOF >/dev/null
     delete dhcp.lan.ignore;
     commit dhcp
 EOF
+    fi
 
 }
 
@@ -165,6 +186,41 @@ EOF
     insmod et
 }
 
+# Take care: used for QCA series, R3600.
+bridgeap_open_r3600() {
+    echo "#######################bridgeap_open_r3600###############"
+uci -q batch <<-EOF >/dev/null
+    delete network.wan
+	delete network.wan6
+    delete network.vpn
+    set network.lan.ifname='eth1 eth2 eth3 eth4'
+    commit network
+
+    set dhcp.lan.ignore=1;
+    commit dchp
+EOF
+    nvram set mode=AP
+    nvram commit
+}
+
+# Take care: used for QCA series, RM1800.
+bridgeap_open_rm1800() {
+    echo "#######################bridgeap_open_rm1800###############"
+uci -q batch <<-EOF >/dev/null
+    delete network.wan
+    delete network.wan_6
+    delete network.vpn
+    set network.lan.ifname='eth1 eth2 eth3 eth4'
+    commit network
+
+    set dhcp.lan.ignore=1;
+    commit dchp
+EOF
+    nvram set mode=AP
+    nvram commit
+}
+
+
 #
 #config backupfile /etc/config/.network.mode.router is create by dhcp_apclient.sh:router_config_backup()
 #
@@ -217,6 +273,111 @@ EOF
 
     rmmod et
     insmod et
+}
+
+bridgeap_close_r3600(){
+
+    echo "#######################bridgeap_close_r3600###############"
+
+    local router_backup_file="/etc/config/.network.mode.router"
+
+    [ ! -f "$router_backup_file" ] &&  bridgeap_close_r3600_default && return;
+
+    mv $router_backup_file "/etc/config/network"
+
+uci -q batch <<-EOF >/dev/null
+    delete network.wan.auto
+    commit network
+    delete dhcp.lan.ignore;
+    commit dhcp
+EOF
+    nvram set mode=Router
+    nvram commit
+
+}
+
+bridgeap_close_r3600_default() {
+    echo "#######################bridgeap_close_r3600_default###############"
+uci -q batch <<-EOF >/dev/null
+    delete network
+    set network.@switch[0]=switch
+    set network.@switch[0].name='switch0'  
+    set network.loopback=interface
+    set network.loopback.ifname='lo'
+    set network.loopback.proto='static'
+    set network.loopback.ipaddr='127.0.0.1'
+    set network.loopback.netmask='255.0.0.0'
+    set network.lan=interface
+    set network.lan.type='bridge'
+    set network.lan.ifname='eth2 eth3 eth4'
+    set network.lan.proto='static'
+    set network.lan.ipaddr='192.168.31.1'
+    set network.lan.netmask='255.255.255.0'
+	set network.eth1=interface
+	set network.eth1.ifname='eth1'
+	set network.eth1.keepup='1'
+    set network.wan='interface'
+    set network.wan.proto='dhcp'
+    set network.wan.ifname='eth1'
+    commit network
+
+    delete dhcp.lan.ignore;
+    commit dhcp
+
+EOF
+
+}
+
+bridgeap_close_rm1800(){
+
+    echo "#######################bridgeap_close_rm1800#############"
+
+    local router_backup_file="/etc/config/.network.mode.router"
+
+    [ ! -f "$router_backup_file" ] &&  bridgeap_close_rm1800_default && return;
+
+    mv $router_backup_file "/etc/config/network"
+
+uci -q batch <<-EOF >/dev/null
+    delete network.wan.auto
+    commit network
+    delete dhcp.lan.ignore;
+    commit dhcp
+EOF
+    nvram set mode=Router
+    nvram commit
+
+}
+
+bridgeap_close_rm1800_default() {
+    echo "#######################bridgeap_close_rm1800_default###############"
+uci -q batch <<-EOF >/dev/null
+    delete network
+    set network.@switch[0]=switch
+    set network.@switch[0].name='switch0'  
+    set network.loopback=interface
+    set network.loopback.ifname=lo
+    set network.loopback.proto=static
+    set network.loopback.ipaddr=127.0.0.1
+    set network.loopback.netmask=255.0.0.0
+    set network.lan=interface
+    set network.lan.type=bridge
+    set network.lan.ifname='eth2 eth3 eth1'
+    set network.lan.proto=static
+    set network.lan.ipaddr=192.168.31.1
+    set network.lan.netmask=255.255.255.0
+    set network.eth4=interface
+    set network.eth4.ifname='eth4'
+    set network.eth4.keepup='1'
+    set network.wan=interface
+    set network.wan.proto=dhcp
+    set network.wan.ifname=eth4
+    commit network
+
+    delete dhcp.lan.ignore;
+    commit dhcp
+EOF
+
 }
 
 bridgeap_close_r1d_default() {
@@ -374,22 +535,29 @@ case $OPT in
 
     open)
         ifdown vpn
+	echo $wan_device $lan_device
 
         bridgeap_open;
         /etc/init.d/dnsmasq stop
+        /usr/sbin/dhcp_apclient.sh restart
         /etc/init.d/network restart
         /etc/init.d/dnsmasq start
-        /usr/sbin/dhcp_apclient.sh restart
+
+        #restart lan to active lan-clients renew dhcp
+        /usr/sbin/dhcp_apclient.sh restart lan;
+
         /usr/sbin/vasinfo_fw.sh off
-        /etc/init.d/trafficd restart
+        /etc/init.d/trafficd stop
         /etc/init.d/xqbc restart
-        /etc/init.d/tbus stop
+        /etc/init.d/tbusd stop
+	/etc/init.d/xiaoqiang_sync start
         [ -f /etc/init.d/hwnat ] && /etc/init.d/hwnat off
 
         bridgeap_check_gw_start
 
         bridgeap_plugin_restart
         [ -f /etc/init.d/minet ] && /etc/init.d/minet restart
+        /etc/init.d/ipv6 restart
 
         return $?
     ;;
@@ -398,18 +566,25 @@ case $OPT in
         bridgeap_check_gw_stop
         bridgeap_close;
         /etc/init.d/dnsmasq stop
+        /usr/sbin/dhcp_apclient.sh restart
         /etc/init.d/network restart
         /etc/init.d/dnsmasq start
-        /usr/sbin/dhcp_apclient.sh restart
+
         /usr/sbin/vasinfo_fw.sh post_ota
         /etc/init.d/trafficd restart
         /etc/init.d/xqbc restart
-        /etc/init.d/tbus start
+	/etc/init.d/xiaoqiang_sync stop
+        /etc/init.d/tbusd start
         [ -f /etc/init.d/minet ] && /etc/init.d/minet restart
 
         [ -f /etc/init.d/hwnat ] && /etc/init.d/hwnat start
 
         bridgeap_plugin_restart
+        /etc/init.d/ipv6 restart
+        /etc/init.d/odhcpd start
+        #restart lan to active lan-clients renew dhcp
+        /usr/sbin/dhcp_apclient.sh restart lan;
+
         return $?
     ;;
 
@@ -427,16 +602,17 @@ case $OPT in
         # in bridge ap mode and gateway unreachable, we had to run dhcp renew issue;
         # if can't renew ipaddr, script should  exit. otherwise, restart network && lan
         bridgeap_logger "gateway changed, try dhcp renew."
-        local lan_ipaddr_ori=`uci get network.lan.ipaddr 2>/dev/null`
+        lan_ipaddr_ori=`uci get network.lan.ipaddr 2>/dev/null`
 
         /usr/sbin/dhcp_apclient.sh start br-lan;
-        local lan_ipaddr_now=`uci get network.lan.ipaddr 2>/dev/null`
+        lan_ipaddr_now=`uci get network.lan.ipaddr 2>/dev/null`
         [ "$lan_ipaddr_ori" = "$lan_ipaddr_now" ] && exit 0;
+        matool --method setKV --params "ap_lan_ip" "$lan_ipaddr_now"
 
-        bridgeap_logger "gateway changed, lan ip changed from $lan_ipaddr_ori to $lan_ipaddr_now."
-        /etc/init.d/network restart
         bridgeap_logger "gateway changed, try lan restart"
         bridgeap_lan_restart
+        bridgeap_logger "gateway changed, lan ip changed from $lan_ipaddr_ori to $lan_ipaddr_now."
+        /etc/init.d/network restart
         exit 0;
      ;;
 

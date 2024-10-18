@@ -15,7 +15,7 @@ test $? -ne 0 -a "$timeout" != '0' && timeout=2
 test $timeout -le 0 && timeout=2
 
 nic="$2"
-[ $nic == "WAN" ] && nic="wan"
+[ "$nic" == "WAN" ] && nic="wan"
 nic="${nic:-wan}"
 network_get_physdev realnic "$nic"
 realnic="${realnic:-eth0.2}"
@@ -45,29 +45,37 @@ do
 	case "$oncheck" in
 		pppoe|PPPOE)
 			#check PPPOE
-                        hard_mode=$(uci -q get misc.hardware.model)
-                        if [ -n "$hard_mode" ] && [ $hard_mode == "R3D" ]; then
-                                ifconfig eth0 promisc >/dev/null 2>&1
-                        fi
-		        runt $timeout /usr/sbin/pppoe-discovery -I $realnic >/dev/null 2>&1
+            hard_mode=$(uci -q get misc.hardware.model)
+            if [ -n "$hard_mode" ] && [ $hard_mode == "R3D" ]; then
+                ifconfig eth0 promisc >/dev/null 2>&1
+            fi
+		    runt $timeout /usr/sbin/pppoe-discovery -I $realnic >/dev/null 2>&1
 			if [ $? -eq 0 ]
 				then
 				echo "PPPOE=YES"
 			else
 				echo "PPPOE=NO"
 			fi
-                        if [ -n "$hard_mode" ] && [ $hard_mode == "R3D" ]; then
-                                ifconfig eth0 -promisc >/dev/null 2>&1
-                        fi
+            if [ -n "$hard_mode" ] && [ $hard_mode == "R3D" ]; then
+                ifconfig eth0 -promisc >/dev/null 2>&1
+            fi
 			;;
 		dhcp|DHCP)
 		        #check dhcp
-			udhcpc -B -C -n -s /bin/true -t 1 -T $timeout -i $realnic >/dev/null 2>&1
+			udhcpc -B -C -n -q -s /bin/true -t 1 -T $timeout -i $realnic >/dev/null 2>&1
 			if [ $? -eq 0 ]
 				then
 				echo "DHCP=YES"
 			else
-				echo "DHCP=NO"
+				ubus call network.interface.wan down
+				udhcpc -B -C -n -q -s /bin/true -t 1 -T $timeout -i $realnic >/dev/null 2>&1
+				if [ $? -eq 0 ]
+					then
+					echo "DHCP=YES"
+				else
+					echo "DHCP=NO"
+				fi
+				ubus call network.interface.wan up
 			fi
 			;;
 		*)

@@ -1,0 +1,9 @@
+/etc/Wireless/mt7603e/mt7603e.eeprom.bin
+/etc/Wireless/mt7603e/mt7603e.dat.old
+/etc/Wireless/mt7603e/mt7603e.dat
+/lib/upgrade/keep.d/mt7603e-scripts
+/etc/Wireless/mt7603e/singlesku/US_SingleSKU.dat
+/etc/Wireless/mt7603e/version
+/etc/Wireless/mt7603e/singlesku/CN_SingleSKU.dat
+/lib/wifi/mt7603e.sh
+/etc/Wireless/mt7603e/singlesku/SingleSKU.dat

@@ -2,8 +2,8 @@
 
 local io = require "io"
 local socket = require "socket"
-local px = require "Posix"
-local devs = {"ifb0", "eth0.2"}
+local px = require "posix"
+local devs = {"br-lan", "eth0.2"}
 local g_interval = 1
 local printf=print
 local t_now,t_last,t_interval=nil,nil,nil
@@ -205,8 +205,13 @@ function main()
     local clear_count=0
     local display_count=3
     os.execute('clear')
+    if arg[1] and arg[1] == '-b' then
+        batch_mode=true
+    end
     while display_count > 0 do
-
+        if batch_mode then
+            display_count = display_count - 1
+        end
         res = get_counters(devs)
         local qlist=get_hwqos_ip()
 

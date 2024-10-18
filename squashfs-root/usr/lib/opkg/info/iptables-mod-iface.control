@@ -1,0 +1,9 @@
+Package: iptables-mod-iface
+Version: 2.10-1
+Depends: libc, iptables, kmod-ipt-iface
+Source: feeds/packages/net/xtables-addons
+Section: net
+Maintainer: Jo-Philipp Wich <jow@openwrt.org>
+Architecture: mipsel_24kc
+Installed-Size: 2892
+Description:  iface iptables extension

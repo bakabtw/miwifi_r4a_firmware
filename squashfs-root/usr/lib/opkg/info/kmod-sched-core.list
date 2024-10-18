@@ -1,0 +1,5 @@
+/lib/modules/4.4.198.mt7621/cls_tcindex.ko
+/lib/modules/4.4.198.mt7621/cls_flow.ko
+/lib/modules/4.4.198.mt7621/cls_fw.ko
+/etc/modules.d/70-sched-core
+/lib/modules/4.4.198.mt7621/sch_ingress.ko

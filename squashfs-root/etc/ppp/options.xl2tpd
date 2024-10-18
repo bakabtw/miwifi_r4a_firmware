@@ -1,13 +1,19 @@
 #
-
-lock
 noauth
-debug
-dump
-logfd 2
-logfile /var/log/xl2tpd.log
-noccp
+#debug
+#dump
+logfile /tmp/ppp/l2tp.log
+#error_state_file /tmp/state/l2tp_last_error
+#noccp
+usepeerdns
 novj
 novjccomp
 nopcomp
 noaccomp
+mtu 1400
+mru 1400
+lcp-echo-interval 20
+lcp-echo-failure 5
+lcp-max-terminate 0
+nodefaultroute
+noipdefault

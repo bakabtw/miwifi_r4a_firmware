@@ -32,23 +32,23 @@ scan_wifi() {
         config_load "${cfgfile:-wireless}"
 }
 
-local ssid
-local ssid_base64
-local ssid_5g
-local ssid_base64_5g
-local key
-local key_base64
-local key_5g
-local key_base64_5g
-
-local device_name=`uci get misc.wireless.if_2G 2>/dev/null`
-local device_name_5g=`uci get misc.wireless.if_5G 2>/dev/null`
-local ifname_2g=`uci get misc.wireless.ifname_2G 2>/dev/null`
-local ifname_5g=`uci get misc.wireless.ifname_5G 2>/dev/null`
 
 wifiap_interface_find_by_device()
 {
+	scan_wifi
 	local ifname
+	local ssid
+	local ssid_base64
+	local ssid_5g
+	local ssid_base64_5g
+	local key
+	local key_base64
+	local key_5g
+	local key_base64_5g
+	local device_name=`uci get misc.wireless.if_2G 2>/dev/null`
+	local device_name_5g=`uci get misc.wireless.if_5G 2>/dev/null`
+	local ifname_2g=`uci get misc.wireless.ifname_2G 2>/dev/null`
+	local ifname_5g=`uci get misc.wireless.ifname_5G 2>/dev/null`
 
 	if [ "${ifname_2g}" != "" ]; then
 	config_get vifs "${device_name}" vifs
@@ -74,21 +74,22 @@ wifiap_interface_find_by_device()
                 fi
         done
 	fi
-}
 
-scan_wifi
-wifiap_interface_find_by_device
-timeout -t 2 tbus list | grep -v netapi | grep -v master | while read a
+
+tbus -t 2 list | grep -v netapi | grep -v master | while read a
 do
      #call tbus function to notice device change wifi passwd
     [ "${ifname_2g}" == "" ] && [ "${ifname_5g}" == "" ] && return 1
     if [ "${ifname_2g}" == "" ];  then
-	timeout -t 2 tbus call $a notice  "{\"ssid_5g\":\"${ssid_base64_5g}\",\"passwd_5g\":\"${key_base64_5g}\"}"
+	tbus -t 2 call $a notice  "{\"ssid_5g\":\"${ssid_base64_5g}\",\"passwd_5g\":\"${key_base64_5g}\"}"
     fi
     if [ "$ifname_5g" == "" ]; then
-	timeout -t 2 tbus call $a notice  "{\"ssid\":\"${ssid_base64}\",\"passwd\":\"${key_base64}\"}"
+	tbus -t 2 call $a notice  "{\"ssid\":\"${ssid_base64}\",\"passwd\":\"${key_base64}\"}"
     else
-        timeout -t 2 tbus call $a notice  "{\"ssid\":\"${ssid_base64}\",\"passwd\":\"${key_base64}\",\"ssid_5g\":\"${ssid_base64_5g}\",\"passwd_5g\":\"${key_base64_5g}\"}"
+        tbus -t 2 call $a notice  "{\"ssid\":\"${ssid_base64}\",\"passwd\":\"${key_base64}\",\"ssid_5g\":\"${ssid_base64_5g}\",\"passwd_5g\":\"${key_base64_5g}\"}"
     fi
 done
+}
+scan_wifi
+wifiap_interface_find_by_device
 

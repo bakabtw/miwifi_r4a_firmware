@@ -2,16 +2,16 @@
 # Copyright (C) 2006 OpenWrt.org
 
 START=95
-
 boot() {
-	[ -d /tmp/root ] && {
-		lock /tmp/.switch2jffs
-		firstboot switch2jffs
-		lock -u /tmp/.switch2jffs
-	}
+	mount_root done
+	rm -f /sysupgrade.tgz
 
 	# process user commands
 	[ -f /etc/rc.local ] && {
 		sh /etc/rc.local
 	}
+
+	# set leds to normal state
+	. /etc/diag.sh
+	set_state done
 }

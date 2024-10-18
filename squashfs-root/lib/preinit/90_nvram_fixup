@@ -18,7 +18,7 @@ nvram_loss_recovery() {
 	if [ -s /data/usr/nvram.txt ]
 	then
 		echo "nvram loss recovery nvram corrupt">> /dev/kmsg 2>/dev/null
-		cat /data/usr/nvram.txt | while read line
+		cat /data/usr/nvram.txt | grep -vE '(flag_boot_rootfs|boot_reason)' | while read line
 		do
 			nvram set "$line"
 		done

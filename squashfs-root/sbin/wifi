@@ -2,24 +2,24 @@
 # Copyright (C) 2006 OpenWrt.org
 
 . /lib/functions.sh
+. /usr/share/libubox/jshn.sh
 
 usage() {
 	cat <<EOF
-Usage: $0 [down|detect]
-enables (default), disables or detects a wifi configuration.
+Usage: $0 [config|up|down|reload|status]
+enables (default), disables or configures devices not yet configured.
 EOF
 	exit 1
 }
 
-log() {
-	logger -s -t "/sbin/wifi" -- "$@"
-}
+ubus_wifi_cmd() {
+	local cmd="$1"
+	local dev="$2"
 
-log_p() {
-	logger -p 1 -s -t "/sbin/wifi" -- "$@"
+	json_init
+	[ -n "$2" ] && json_add_string device "$2"
+	ubus call network.wireless "$1" "$(json_dump)"
 }
-
-log_p "CALLER: `cat /proc/$PPID/cmdline`"
 
 find_net_config() {(
 	local vif="$1"
@@ -64,7 +64,7 @@ prepare_key_wep() {
 	[ "${#key}" -eq 10 -a $hex -eq 1 ] || \
 	[ "${#key}" -eq 26 -a $hex -eq 1 ] || {
 		[ "${key:0:2}" = "s:" ] && key="${key#s:}"
-        	key="$(echo -n "$key" | hexdump -ve '1/1 "%02x" ""')"
+		key="$(echo -n "$key" | hexdump -ve '1/1 "%02x" ""')"
 	}
 	echo "$key"
 }
@@ -91,7 +91,7 @@ wifi_fixup_hwmode() {
 		;;
 		*)
 			hwmode=
-			if [ "${channel:-0}" -gt 0 ]; then 
+			if [ "${channel:-0}" -gt 0 ]; then
 				if [ "${channel:-0}" -gt 14 ]; then
 					hwmode=a
 				else
@@ -105,125 +105,61 @@ wifi_fixup_hwmode() {
 	config_set "$device" hwmode "$hwmode"
 }
 
-wifi_sync_para() { return 0;}
-wifi_service_start() { return 0;}
-wifi_service_stop() { return 0;}
-wifi_service_restart() { return 0;}
-
-# check radio status and create wl netdev when wl1 down for MTK SDK.
-recall_wifi=0
-wifi_wl_create() {
-    local date_tag=$(date +%F" "%H:%M:%S)
-    local device="$1"
-
-    # check radio status, for old version update
-    local radio_disabled="$(uci get wireless.$device.disabled)"
-    local guest_dev="$(uci get wireless.guest_2G.device 2>/dev/NULL)"
-    log "check_wifidev...$device"
-    log "guest_dev...$guest_dev"
-    log "radio_disabled...$radio_disabled"
-
-    # check radio status, just guest config is ok.
-    if [ "$guest_dev" != "" ] &&  [ "$radio_disabled" == "1" ] && [ "$guest_dev" == "$device" ]; then
-        uci set wireless.$device.disabled=0
-        uci commit
-        recall_wifi=1
-        log "...force $device enable."
-        logger -p info -t wifishare "stat_points_none wifishare_force=set $device enable, date: $date_tag"
-    fi
-
-    # check 2.4G wl netdev status, must up wl1 when startup. MTK SDK
-    local wl_name_2g="$(uci get misc.wireless.ifname_2G 2>/dev/NULL)"
-    local iface_0_name="$(uci get wireless.@wifi-iface[0].ifname 2>/dev/NULL)"
-    local iface_1_name="$(uci get wireless.@wifi-iface[1].ifname 2>/dev/NULL)"
-    local wl_disabled="0"
-
-    if [ "$wl_name_2g" == "$iface_0_name" ]
-    then
-        #  --- R4
-        wl_disabled="$(uci get wireless.@wifi-iface[0].disabled 2>/dev/NULL)"
-        log "iface[0].disabled...$wl_disabled"
-    elif [ "$wl_name_2g" == "$iface_1_name" ]
-    then
-        #  --- R1CM
-        wl_disabled="$(uci get wireless.@wifi-iface[1].disabled 2>/dev/NULL)"
-        log "iface[1].disabled...$wl_disabled"
-    fi
-
-    # check if guest netdev is ok
-    local guest_disabled="$(uci get wireless.guest_2G.disabled 2>/dev/NULL)"
-    local guest_name="$(uci get wireless.guest_2G.ifname 2>/dev/NULL)"
-    local guest_ok="$(ifconfig $guest_name |grep Ethernet  2>/dev/NULL)"
-    local hw_type="$(uci get misc.hardware.model 2>/dev/NULL)"
-
-    log "guest_ok...$guest_ok"
-    # if wl netdev not exist, make wl1 up, create wl2\wl3, then shutdown.
-    if [ "$guest_name" != "" ] && [ "$guest_dev" == "$device" ] && [ "$guest_ok" == "" ] && [ "$guest_disabled" == "0" ] && [ "$wl_disabled" == "1" ]; then
-        ifconfig $wl_name_2g up
-        sleep 1
-        ifconfig $wl_name_2g down
-        # fix bug XP-19157, R3P wl3 has not MAC when netdev register
-        if [ "$hw_type" == "R3P" ]; then
-            ifconfig $guest_name up
-            ifconfig $guest_name down
-        fi
-        #ifconfig $guest_name up
-        brctl addif br-guest $guest_name
-        recall_wifi=1
-        log "...force $wl_name_2g up, for wl2 wl3 create."
-        logger -p info -t wifishare "stat_points_none wifishare_force=$wl_name_2g up, for wl2 wl3 create, date: $date_tag"
-    fi
+_wifi_updown() {
+	for device in ${2:-$DEVICES}; do (
+		config_get disabled "$device" disabled
+		[ "$disabled" = "1" ] && {
+			echo "'$device' is disabled"
+			set disable
+		}
+		config_get iftype "$device" type
+		if eval "type ${1}_$iftype" 2>/dev/null >/dev/null; then
+			eval "scan_$iftype '$device'"
+			eval "${1}_$iftype '$device'" || echo "$device($iftype): ${1} failed"
+		elif [ ! -f /lib/netifd/wireless/$iftype.sh ]; then
+			echo "$device($iftype): Interface type not supported"
+		fi
+	); done
 }
 
 wifi_updown() {
-	local ft_mode=`cat /proc/xiaoqiang/ft_mode`
-
+	cmd=down
+	scan_wifi
 	[ enable = "$1" ] && {
-		wifi_updown disable "$2" >/dev/null 2>&1
+		_wifi_updown disable "$2"
+		ubus_wifi_cmd "$cmd" "$2"
 		scan_wifi
-		wifi_sync_para
+		cmd=up
 	}
-
-	for device in ${2:-$DEVICES}; do
-	    (
-		    config_get disabled "$device" disabled
-		    [ 1 == "$disabled" ] && {
-			    log "'$device' is disabled"
-			    set disable
-		    }
-
-		    config_get iftype "$device" type
-		    log "...$device.type=$iftype..."
-		    log "run1 eval type ${1}_$iftype"
-		    if eval "type ${1}_$iftype" 2>/dev/null >/dev/null; then
-			    eval "scan_$iftype '$device'"
-			    log "run2 eval ${1}_$iftype '$device'"
-			    eval "${1}_$iftype '$device'" || log "$device($iftype): ${1} failed"
-		    else
-			    log "$device($iftype): Interface type not supported"
-		    fi
-	    );
-
-	    # add radio and netdev check in non-factory mode
-	    if [ "enable" == "$1" -a "1" != "$ft_mode" ]; then
-		    wifi_wl_create $device
-	    fi
-	    # add end
-	done
-
-	if [ "enable" = "$1" ]; then
-		wifi_service_start
-	else
-		wifi_service_stop
-	fi
+	ubus_wifi_cmd "$cmd" "$2"
+	_wifi_updown "$@"
 }
 
-wifi_detect() {
-	for driver in ${2:-$DRIVERS}; do (
+wifi_reload_legacy() {
+	_wifi_updown "disable" "$1"
+	scan_wifi
+	_wifi_updown "enable" "$1"
+}
+
+wifi_reload() {
+	ubus call network reload
+	wifi_reload_legacy
+}
+
+wifi_detect_notice() {
+	>&2 echo "WARNING: Wifi detect is deprecated. Use wifi config instead"
+	>&2 echo "For more information, see commit 5f8f8a366136a07df661e31decce2458357c167a"
+	exit 1
+}
+
+wifi_config() {
+	[ ! -f /etc/config/wireless ] && touch /etc/config/wireless
+
+	for driver in $DRIVERS; do (
 		if eval "type detect_$driver" 2>/dev/null >/dev/null; then
-			eval "detect_$driver" || log "$driver: Detect failed"
+			eval "detect_$driver" || echo "$driver: Detect failed" >&2
 		else
-			log "$driver: Hardware detection not supported"
+			echo "$driver: Hardware detection not supported" >&2
 		fi
 	); done
 }
@@ -284,7 +220,7 @@ scan_wifi() {
 		case "$TYPE" in
 			wifi-iface)
 				config_get device "$CONFIG_SECTION" device
-				config_get vifs "$device" vifs 
+				config_get vifs "$device" vifs
 				append vifs "$CONFIG_SECTION"
 				config_set "$device" vifs "$vifs"
 			;;
@@ -296,35 +232,16 @@ scan_wifi() {
 DEVICES=
 DRIVERS=
 include /lib/wifi
-
-wifi_bcm_lock="/var/run/wifi_bcm.lock"
-trap "lock -u $wifi_bcm_lock; exit 1" SIGHUP SIGINT SIGTERM
-lock $wifi_bcm_lock
-
 scan_wifi
 
-exitcode=0
 case "$1" in
-	down)
-		wifi_updown "disable" "$2"
-		wifi_service_restart
-		echo 1 > /tmp/smart_force_wifi_down
-		;;
-	detect) wifi_detect "$2";;
+	down) wifi_updown "disable" "$2";;
+	detect) wifi_detect_notice ;;
+	config) wifi_config ;;
+	status) ubus_wifi_cmd "status" "$2";;
+	reload) wifi_reload "$2";;
+	reload_legacy) wifi_reload_legacy "$2";;
 	--help|help) usage;;
-	*)
-		wifi_updown "enable" "$2"
-		exitcode=$?
-
-		# just for guest status chech
-		echo 0 > /tmp/smart_force_wifi_down
-		log ".....recall_wifi=$recall_wifi."
-		if [ 1 == $recall_wifi ]; then
-			wifi_updown "enable"
-        fi
-	;;
+	''|up) ubus call network reload; wifi_updown "enable" "$2";;
+	*) usage; exit 1;;
 esac
-
-lock -u $wifi_bcm_lock
-
-exit $exitcode

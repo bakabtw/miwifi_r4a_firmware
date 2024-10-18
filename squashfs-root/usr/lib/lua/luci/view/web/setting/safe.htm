@@ -9,17 +9,50 @@ local request_uri = luci.http.getenv("REMOTE_URI")
 local remote_addr = luci.http.getenv("REMOTE_ADDR")
 local mac = luci.sys.net.ip4mac(remote_addr)
 local lanType = wifiUtil.getDeviceWifiIndex(mac)
+local XQSysUtil = require "xiaoqiang.util.XQSysUtil"
+local hardware = string.lower( XQSysUtil.getHardware() )
+
+local XQFunction = require("xiaoqiang.common.XQFunction")
+local netmod = 0
+local netmod = XQFunction.getnetmode()
+--2 有线中继
+--1 无线中继
+--4 mesh主设备  whc_cap
+--3 mesh从设备  whc_re
+--0 router
+local features = require("xiaoqiang.XQFeatures").FEATURES
 %>
 <%include("web/inc/head")%>
 <title><%:小米路由器%></title>
 <meta name="viewport" content="width=1200">
 <link href="<%=resource%>/web/css/bc.css?v=<%=ver%>" rel="stylesheet">
+<link href="<%=resource%>/web/css/layout.css?v=<%=ver%>" rel="stylesheet">
 <link href="<%=resource%>/web/css/safe.css?v=<%=ver%>" rel="stylesheet">
 </head>
 <body>
 <div id="doc">
     <%include( "web/inc/header")%>
     <div id="bd">
+        <%if features["system"]["https"] == "1" then%>
+        <div class="mod-set mod-macfilter" id="accessProtocol">
+            <div class="hd">
+                <h3><%:HTTPS开关%></h3>
+                <div class="switch">
+                    <a data-enable="1" class="btn-switch btn-switch-off" id="protocolswitch" href="#"></a>
+                </div>
+                <div class="protocolDiv"><%:访问协议控制介绍%><span class="helpIcon"></span></div>
+            </div>
+            <div class="protocolText bd">
+                <p class="protocolText-tit"><%:开启后，Web后台访问将强制重定向为https协议%></p>
+                <div class="protocolText-msg" style="display: none">
+                    <p class="protocolText-msg-tit"><%:什么是访问协议控制？%></p>
+                    <p style="padding: 0;"><%:访问协议控制是小米路由器提供给用户的一种与服务器交互时的安全性提升方案。打开此功能后，小米路由器Web后台的域名访问（192.168.31.1）和网址访问（router.miwifi.com）都会被强制重定向为https协议。%></p>
+                </div>
+                
+            </div>
+            
+        </div>
+        <%end%>
         <div class="mod-set mod-macfilter" id="modMacfilter" style="display:none;">
             <div class="hd">
                 <h3><%:无线访问控制%></h3>
@@ -28,6 +61,7 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
                 </div>
             </div>
             <div class="bd">
+                <%if hardware ~= "d01" then%>
                 <div class="section" style="display:none;">
                     <h4><%:控制模式%>：</h4>
                     <p>
@@ -39,6 +73,7 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
                         </label>
                     </p>
                 </div>
+                <%end%>
                 <div class="section" style="display:none;">
                     <h4 id="typeText"><%:正在检测模式列表...%></h4>
                     <table class="table">
@@ -67,6 +102,7 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
         </div>
         <%include( "web/inc/password")%>
 
+        <%if hardware ~= "d01" then%>
         <div class="mod-set mod-manage-filter">
             <div class="hd">
                 <h3><%:管理后台访问控制%></h3>
@@ -95,6 +131,7 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
                 </div>
             </div>
         </div>
+        <%end%>
     </div>
     <%include( "web/inc/footer")%>
 </div>
@@ -179,6 +216,7 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
         var selfMac = '<%=mac%>'.toUpperCase();
         var lanType = '<%=lanType%>';
         var switchbtn = $('#macfilterswitch');
+        var hardware = '<%=hardware%>';
 
         var getWifiFilterInfo = function (data, callback) {
             $.getJSON('<%=luci.dispatcher.build_url("api", "xqnetwork", "wifi_macfilter_info")%>', data, function (rsp) {
@@ -255,8 +293,12 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
         var setWifiMacfilter = function(){
             var model = $('.filtertype:checked').val(),
                 requestURL = '<%=luci.dispatcher.build_url("api", "xqnetwork", "set_wifi_macfilter")%>',
-                enable = $('#macfilterswitch').attr('data-enable') == '1' ? 0 : 1,
-                requestData = {
+                enable = $('#macfilterswitch').attr('data-enable') == '1' ? 0 : 1;
+                //D01 没有白名单 所以没有model参数 默认设置成0 表示黑名单
+                if(typeof(model) == 'undefined'  && hardware == 'd01'){
+                    model = 0
+                }
+             var  requestData = {
                     model: model,
                     enable: enable
                 };
@@ -355,6 +397,10 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
                     name = $('#macname').val(),
                     model = $('.filtertype:checked').val(),
                     option = 0;
+                    //d01 没有白名单 
+                    if(hardware=='d01'){
+                        model = 0
+                    }
                 $.ajax({
                     url: $('#' + formName).attr('action'),
                     type: 'GET',
@@ -376,6 +422,9 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
                             });
                         } else if(res.code == 401){
                             //
+                        }else if(res.code == 1658){
+                            selfaddDialog.close();
+                            $.alert( "添加失败，Mesh路由不能添加到黑名单" );
                         }else{
                             $('#selfAddSubmit').removeClass('btn-primary-disabled').prop('disabled', false).find('span').text('<%:添加%>');
                             msg = res.msg;
@@ -391,6 +440,10 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
             var mac = '';
             var valarr = [];
             var model = $('.filtertype:checked').val();
+            //d01 没有白名单 
+            if(hardware=='d01'){
+               model = 0
+            }
             var option = 0;
 
             var inputs = $('.onlinemacinput:checked');
@@ -438,11 +491,17 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
             var model = $('.filtertype:checked').val();
             var option = 1;
             var requestURL = '<%=luci.dispatcher.build_url("api", "xqnetwork", "edit_device")%>';
+            //d01 没有白名单 
+            if(hardware=='d01'){
+               model = 0
+            }
             var requestData = {
                 mac: mac,
                 model: model,
                 option: option
             };
+
+           
             $.getJSON(requestURL, requestData, function (res) {
                 if (res.code == 0) {
                     getWifiFilterInfo({
@@ -579,6 +638,7 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
     var tpl = $('#tplManageFilterlist');
     var apiOpt = '<%=luci.dispatcher.build_url("api", "misystem", "web_access_opt")%>';
     var apiGet = '<%=luci.dispatcher.build_url("api", "misystem", "web_access_info")%>';
+    var hardware = '<%=hardware%>';
 
     function getInfo(){
         $.get(apiGet, function(rsp){
@@ -598,9 +658,13 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
                     $('#manageFilterBody .isoff').hide();
                     $('#manageFilterBody .ison').show();
                 } else {
-                    switchbtn[0].className = 'btn-switch btn-switch-off';
-                    $('#manageFilterBody .isoff').show();
-                    $('#manageFilterBody .ison').hide();
+                    if(hardware == 'd01'){
+
+                    }else{
+                         switchbtn[0].className = 'btn-switch btn-switch-off';
+                        $('#manageFilterBody .isoff').show();
+                        $('#manageFilterBody .ison').hide();
+                    }
                 }
             }
         });
@@ -664,6 +728,88 @@ local lanType = wifiUtil.getDeviceWifiIndex(mac)
     });
 
     getInfo();
+    //访问协议
+    $(".protocolDiv").click(function(){
+        $(".protocolText-msg").fadeToggle();
+    })
+    $('#protocolswitch').on('click', function(e){
+            e.preventDefault();
+            var cklOn = $(this).attr('data-on') == 1 ? 0 : 1
+            var self = this;
+
+            var requestData = {
+                on: cklOn
+            };
+            if(cklOn == 1){
+                var dialog1 = $.dialog({
+                    id : "confirm",
+                    width: 390,
+                    title : "<%:提示%>",
+                    content : '<%:开启后访问协议将自动重定向为https，需要重新登录Web管理后台。确认开启？%>',
+                    ok: function(){
+                        set_access_force_https(requestData,cklOn,self);
+                    }
+                })
+            }else{
+                set_access_force_https(requestData,cklOn,self);
+            }
+            
+            
+        });
+
+        $.getJSON('<%=luci.dispatcher.build_url("api","xqsystem","get_access_force_https")%>')
+            .done(function( rsp ){
+                if ( rsp.code == 0 ) {
+                    if( rsp.on == 1 ){
+                        $('#protocolswitch')
+                            .removeClass('btn-switch-off')
+                            .addClass('btn-switch-on')
+                            .attr('data-on', '1');
+                    }else{
+                        $('#protocolswitch')
+                            .removeClass('btn-switch-on')
+                            .addClass('btn-switch-off')
+                            .attr('data-on', '0');
+                    }
+
+                }
+            });
+        function set_access_force_https(requestData,cklOn,self){
+            $.ajax({
+                url: '<%=luci.dispatcher.build_url("api", "xqsystem", "set_access_force_https")%>',
+                dataType: 'json',
+                timeout: 5000,
+                type: 'POST',
+                data: requestData,
+                success: function( rsp ){
+                    if( rsp.code === 0 ){
+                        if(cklOn == 1) {
+                            $(self)
+                                .removeClass('btn-switch-off')
+                                .addClass('btn-switch-on')
+                                .attr('data-on', '1');
+                            if(document.location.protocol == 'http:'){
+                                //window.location.href = window.location.href.replace("https","http");
+                                window.location.replace(window.location.href.replace("http","https"));
+                            }    
+                        }else {
+                            $(self)
+                                .removeClass('btn-switch-on')
+                                .addClass('btn-switch-off')
+                                .attr('data-on', '0');
+                        }
+                    } else {
+                        // if ( rsp.code !== 401) {
+                        //     var msg = StringH.encode4Html( rsp.msg );
+                        //     $.alert( msg ).lock();
+                        // }
+                    }
+                },
+                error: function() {
+                    $.alert( '<%:网络异常，请检查是否联网%>' );
+                }
+            });
+        }
 }());
 
 </script>

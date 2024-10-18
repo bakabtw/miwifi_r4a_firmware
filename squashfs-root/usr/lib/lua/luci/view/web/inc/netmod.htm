@@ -3,6 +3,7 @@
 -- ap model
 local XQFunction = require("xiaoqiang.common.XQFunction")
 local encode4HtmlValue = XQFunction.encode4HtmlValue
+local XQSysUtil = require("xiaoqiang.util.XQSysUtil")
 local netMode = 0
 local mode = XQFunction.getNetMode()
 if mode == "lanapmode" then
@@ -15,6 +16,7 @@ local wifiUtil = require("xiaoqiang.util.XQWifiUtil")
 local allWifiInfo = wifiUtil.getAllWifiInfo()
 local uci = require("luci.model.uci").cursor()
 local features = require("xiaoqiang.XQFeatures").FEATURES
+local hardware = string.lower( XQSysUtil.getHardware() )
 %>
 <div class="mod-set mod-netmode">
     <div class="hd">
@@ -23,7 +25,6 @@ local features = require("xiaoqiang.XQFeatures").FEATURES
     <div class="bd">
         <p><%:在路由器工作模式和中继工作模式之间进行切换%></p>
         <a href="#" type="submit" id="btnNetmodSwitch" class="btn btn-primary btn-l"><span><%:切换%></span></a>
-		<p style="padding-top: 10px"><%:中继模式下，如果上级路由器是小米路由器，请设置和上级路由器相同的国家地区%></p>
 		<%if netMode == 0 then%>
 			<input type="hidden" value="0" id="currentnetmode" />
 		<%elseif netMode == 1 then%>
@@ -36,19 +37,7 @@ local features = require("xiaoqiang.XQFeatures").FEATURES
 		<%end%>
     </div>
 </div>
-<!-- <%if features["netmode"]["elink"] == "1" then%>
- <div class="mod-set mod-wifi">
-            <div class="hd">
-                <h3><%:启用与智能网关的无线配置同步%></h3>
-                <div class="switch">
-                    <a href="#elinkswitch" id="elinkswitch" class="btn-switch btn-switch-on" data-on="1"></a>
-                </div>
-            </div>
-            <div class="bd">
-                <p><%:启用此功能后，小米路由器将自动从运营商家庭网关同步Wi-Fi设置%></p>
-            </div>
-    </div>
-    <%end%> -->
+
 <script type="tmpl/html" id="tmplNetMode">
 <div class="netmode-switch-dialog-cont">
 	<div class="switch-step step-select" style="display:block;">
@@ -130,9 +119,9 @@ local features = require("xiaoqiang.XQFeatures").FEATURES
             <div class="form-new-ssid">
             <div class="contral" style="display:none;">
             	<label for="newssidtextInnetmod">
-            		<input type="checkbox" id="newssidtextInnetmod" checked="checked" />
+            		<input type="checkbox" id="newssidtextInnetmod" checked="checked" /> 
             		<span><%:无线网络的名称密码与目标路由器一致%></span>
-            	</label>
+            	</label>	
 			</div>
 				<div class="contral-div hide" id="newssiddivInnetmod">
 	            	<p class="title"><%:设置WiFi名称和密码%></p>

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-logger -p notice -t "hotplug.d" "ntpd: run because of $INTERFACE $ACTION"
+logger -p notice -t "hotplug.d" "40-ntpd: run because of $INTERFACE $ACTION"
 
 [ "$ACTION" = "ifup" ] || exit 0
 

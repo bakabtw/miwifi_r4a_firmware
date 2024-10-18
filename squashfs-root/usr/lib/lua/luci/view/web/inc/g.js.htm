@@ -5,6 +5,7 @@
     local mac = luci.sys.net.ip4mac(remote_addr)
     local romChannel = XQSysUtil.getChannel()
     local romVersion = XQSysUtil.getRomVersion()
+    local betaFlag = XQSysUtil.getBeta()
     local xqCountryCode = require "xiaoqiang.XQCountryCode"
 
     local uci = require("luci.model.uci").cursor()
@@ -82,13 +83,13 @@ try{ document.execCommand("BackgroundImageCache",false,true);} catch(e){}
                 </span>
                 <em class="t"></em>
             </div>
-<!--            <div class="form-item">-->
-<!--                <label class="k"><%:位置%></label>-->
-<!--                <span class="v">-->
-<!--                    <input type="text" name="locale" id="locale" class="ipt-text" autocomplete="off" datatype="bytetext" maxlength="24" reqMsg="<%:路由器位置%>" value="{$locale}">-->
-<!--                </span>-->
-<!--                <em class="t"></em>-->
-<!--            </div>-->
+            <div class="form-item">
+                <label class="k"><%:位置%></label>
+                <span class="v">
+                    <input type="text" name="locale" id="locale" class="ipt-text" autocomplete="off" datatype="bytetext" maxlength="24" reqMsg="<%:路由器位置%>" value="{$locale}">
+                </span>
+                <em class="t"></em>
+            </div>
             <div class="form-contral">
                 <button type="submit" class="btn btn-primary btn-l"><span><%:保存%></span></button>
             </div>
@@ -394,7 +395,7 @@ var rebootWait = function ( opt ) {
                 inputWrap.html( newinput ).find('input')[0].value = inputValue;
                 me.className = meclass + ' bt-showpwd-off';
             }
-
+             
             setTimeout( function() {
                delInputEvent();
                 addInputEvent();
@@ -612,7 +613,7 @@ $.sub( 'loading:stop', function(){
                 content: ''
             },
             conf = mix( _config, {
-                width: 490,
+                width: 390,
                 padding:'25px 30px',
                 title: config.title,
                 content: '<p style="padding-bottom:30px;">{$content}</p><div class="loading-bar"></div>'.tmpl({content: config.content}),
@@ -634,7 +635,7 @@ $.sub( 'loading:stop', function(){
     $.alert = function( content, ok ){
         ok = ok || function(){};
         return $.dialog({
-            width: 490,
+            width: 390,
             padding:'25px 30px',
             title: '<%:提示信息%>',
             content: content,
@@ -649,7 +650,7 @@ $.sub( 'loading:stop', function(){
     $.confirm = function( content, ok, cancel ){
         var _cancel = cancel || function(){};
         return $.dialog({
-            width: 490,
+            width: 390,
             padding:'25px 30px',
             title: '<%:确认信息%>',
             content: content,
@@ -741,12 +742,28 @@ $(function(){
                 var msgMap = {
                     '1': '<p><%:检测到最新版本为{$version}%>，<a href="<%=luci.dispatcher.build_url("web","setting","upgrade")%>"><%:点击此处立即升级%></a>。</p>',
                     '3': '<p><%:5G Wi-Fi启动失败，%><a target="_blank" href="http://www.mi.com/service/contact/"><%:请联系小米客服解决%></a></p>',
-                    '4': '<p><%:检测到与上级路由器存在IP冲突，建议切换到%><a href="<%=luci.dispatcher.build_url("web","setting","wan")%>#netmode"><%:有线中继模式%></a><%:或者%><a href="#" id="ipconflict" data-ip="{$ip}"><%:避让IP冲突%></p>'
+                     '4': '<p><%:检测到与上级路由器存在IP冲突，建议切换到%><a href="<%=luci.dispatcher.build_url("web","setting","wan")%>#netmode"><%:有线中继模式%></a><%:或者%><a href="#" id="ipconflict" data-ip="{$ip}"><%:避让IP冲突%></p>'
                 };
+
+                var msgMapD01 = {
+                    '1': '<p><%:检测到最新版本为{$version}%>，<a href="<%=luci.dispatcher.build_url("web","setting","upgrade")%>"><%:点击此处立即升级%></a>。</p>',
+                    '3': '<p><%:5G Wi-Fi启动失败，%><a target="_blank" href="http://www.mi.com/service/contact/"><%:请联系小米客服解决%></a></p>',
+                    '4': '<p><%:检测到与上级路由器存在IP冲突，请%><a href="<%=luci.dispatcher.build_url("web","setting","lannetset")%>"><%:修改局域网IP地址网段%></a></p>'
+                };
+
                 var msgHTML = [];
-                for (var i = rsp.messages.length - 1; i >= 0; i--) {
-                    msgHTML.push(msgMap[rsp.messages[i].type].tmpl(rsp.messages[i].data));
-                };
+                //rsp.messages = [{type: 4, data: {version: "0.3.78"}, timestamp: 1547150097}];
+                var hardware = '<%=hardware%>';
+                if(hardware=='d01'){
+                    for (var i = rsp.messages.length - 1; i >= 0; i--) {
+                        msgHTML.push(msgMapD01[rsp.messages[i].type].tmpl(rsp.messages[i].data));
+                    };
+                }else{
+                    for (var i = rsp.messages.length - 1; i >= 0; i--) {
+                        msgHTML.push(msgMap[rsp.messages[i].type].tmpl(rsp.messages[i].data));
+                    };
+                }
+                
                 $('#noticebar .content').html( msgHTML.join('') );
 
                 if ( rsp.count > 0 ) {
@@ -765,7 +782,7 @@ $(function(){
                     name: StringH.encode4HtmlValue(rsp.name)
                 });
                 dlgRouterName = $.dialog({
-                    width: 490,
+                    width: 390,
                     title: '<%:修改路由器名称%>',
                     content: html,
                     lock: true
@@ -780,11 +797,11 @@ $(function(){
     function downloadClientHandler(e){
         e.preventDefault();
          var ccode = '<%=ccode%>',content;
-        if (ccode == 'CN') {
-            content = $('#tpldowncn').html();
-        }else {
+        // if (ccode == 'CN') {
+        //     content = $('#tpldowncn').html();
+        // }else {
             content = $('#tpldownintl').html()
-        }
+        // }
         $.dialog({
             width: 490,
             title: '<%:下载客户端%>',
@@ -807,7 +824,7 @@ $(function(){
     function rebootHandler(e){
         e.preventDefault();
         dlgReboot = $.dialog({
-            width: 490,
+            width: 390,
             title: '<%:重启路由器%>',
             content: $('#tplreboot').html(),
             lock: true
@@ -816,7 +833,7 @@ $(function(){
     function shutdownHandler(e){
         e.preventDefault();
         dlgShutdown = $.dialog({
-            width: 490,
+            width: 390,
             title: '<%:路由器关机%>',
             content: $('#tplshutdown').html(),
             lock: true
@@ -940,6 +957,39 @@ $(function(){
         if ( typeof(GLOBALHEADER) !== 'undefined' && GLOBALHEADER === true ) {
             getNotice();
         }
+            var betaFlag = '<%=betaFlag%>';
+            var romChannel = '<%=romChannel%>';
+            if(betaFlag == "1" || romChannel == "stable"){
+                TpWatermark('only for test','170','300','-20','#333','25','.07');
+            }
+            function TpWatermark(CON,H,W,R,C,S,O){
+                if (document.getElementById('tp-watermark') != null) {
+    					return
+    			}
+    				var TpLine = parseInt(document.body.clientWidth/W) * 2; // 一行显示几列
+    				var StrLine = '';
+    				for(var i = 0; i < TpLine; i++){
+    					StrLine += '<span style="display: inline-block; line-height:' + H + 'px; width:' + W + 'px; text-align: center; transform:rotate(' + R + 'deg); color:' + C + '; font-size:'+ S + 'px; opacity:' + O + ';">'+ CON +'</span>'
+    				}
+    				var DivLine = document.createElement("div");
+    					DivLine.innerHTML = StrLine;
+    		
+    				var TpColumn = parseInt(document.body.clientHeight/H) * 2; // 一列显示几行
+    				var StrColumn = '';
+    				for(var i = 0; i < TpColumn; i++){
+    					StrColumn += '<div style="white-space: nowrap;">' + DivLine.innerHTML + '</div>';
+    				}
+    				var DivLayer = document.createElement("div");
+    					DivLayer.innerHTML = StrColumn;
+    					DivLayer.id = "tp-watermark"; // 给水印盒子添加类名
+    					DivLayer.style.position = "fixed";
+    					DivLayer.style.top = "0px"; // 整体水印距离顶部距离
+    					DivLayer.style.left = "-100px"; // 改变整体水印的left值
+    					DivLayer.style.zIndex = "99999"; // 水印页面层级
+    					DivLayer.style.pointerEvents = "none";
+    		
+    				document.body.appendChild(DivLayer); // 到页面中
+                }
     });
 })(jQuery);
 </script>

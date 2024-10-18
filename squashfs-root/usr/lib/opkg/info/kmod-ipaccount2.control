@@ -1,0 +1,8 @@
+Package: kmod-ipaccount2
+Version: 4.4.198.mt7621+0.2-1
+Depends: kernel (=4.4.198.mt7621-1-6da9ad8eabdf7aa41d3d86ec06d94edf), kmod-mediatek_hnat
+Source: package/miwifi/trafficd
+Section: kernel
+Architecture: mipsel_24kc
+Installed-Size: 10724
+Description:  ip account module
