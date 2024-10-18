@@ -1,4 +1,0 @@
-config miwifi 'server'
-	option CountryCode IN
-	option INPREFIX in.
-	option EUPREFIX eu.
